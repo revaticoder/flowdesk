@@ -304,7 +304,7 @@ export default function EmployeeProfilePage() {
                 {managers
                   .filter((m) => m.id !== id)
                   .map((m) => (
-                    <option key={m.id} value={m.full_name}>
+                    <option key={m.id} value={m.id}>
                       {m.full_name}
                     </option>
                   ))}
@@ -372,7 +372,12 @@ export default function EmployeeProfilePage() {
             />
             <DetailRow
               label="Reporting Manager"
-              value={employee.reporting_manager ?? "—"}
+              value={
+                employee.reporting_manager
+                  ? (managers.find((m) => m.id === employee.reporting_manager)
+                      ?.full_name ?? "—")
+                  : "—"
+              }
             />
             <DetailRow
               label="Added On"

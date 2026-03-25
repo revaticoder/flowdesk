@@ -243,7 +243,7 @@ export default function AddEmployeePage() {
             >
               <option value="">None</option>
               {managers.map((m) => (
-                <option key={m.id} value={m.full_name}>
+                <option key={m.id} value={m.id}>
                   {m.full_name}
                 </option>
               ))}

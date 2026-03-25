@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 
 type Employee = {
@@ -27,13 +28,38 @@ const seniorityColor: Record<string, string> = {
 };
 
 export default function PeoplePage() {
+  const router = useRouter();
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const fetchEmployees = async () => {
+    const init = async () => {
       const supabase = createClient();
+
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!user) return;
+
+      // Fetch the logged-in user's employee record to check role
+      const { data: me } = await supabase
+        .from("employees")
+        .select("id, role")
+        .eq("email", user.email)
+        .single();
+
+      // Non-admins get redirected straight to their own profile
+      if (!me || me.role !== "Admin") {
+        if (me) {
+          router.replace(`/dashboard/people/${me.id}`);
+        } else {
+          setLoading(false);
+        }
+        return;
+      }
+
+      // Admin: fetch all employees
       const { data, error } = await supabase
         .from("employees")
         .select("*")
@@ -41,14 +67,18 @@ export default function PeoplePage() {
       if (!error && data) setEmployees(data);
       setLoading(false);
     };
-    fetchEmployees();
-  }, []);
+    init();
+  }, [router]);
 
   const filtered = employees.filter(
     (e) =>
       e.full_name.toLowerCase().includes(search.toLowerCase()) ||
       e.role.toLowerCase().includes(search.toLowerCase())
   );
+
+  if (loading) {
+    return <div className="p-8 text-zinc-500 text-sm">Loading...</div>;
+  }
 
   return (
     <div className="text-white">
@@ -80,9 +110,7 @@ export default function PeoplePage() {
           className="w-full md:max-w-sm bg-zinc-900 border border-zinc-700 text-white placeholder-zinc-500 rounded-lg px-4 py-3 text-sm focus:outline-none focus:border-zinc-500 mb-5"
         />
 
-        {loading ? (
-          <div className="text-zinc-500 text-sm">Loading...</div>
-        ) : filtered.length === 0 ? (
+        {filtered.length === 0 ? (
           <div className="text-zinc-500 text-sm">No employees found.</div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">

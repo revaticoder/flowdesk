@@ -2,15 +2,16 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { createClient } from "@/lib/supabase/client";
 
-const navItems = [
-  { label: "Dashboard", href: "/dashboard", icon: "▦" },
-  { label: "People", href: "/dashboard/people", icon: "◉" },
-  { label: "Clients", href: "#", icon: "◈", soon: true },
-  { label: "Tasks", href: "#", icon: "◻", soon: true },
-  { label: "Attendance", href: "/dashboard/attendance", icon: "◷" },
-  { label: "KPIs", href: "#", icon: "◎", soon: true },
+const allNavItems = [
+  { label: "Dashboard", href: "/dashboard", icon: "▦", adminOnly: false },
+  { label: "People", href: "/dashboard/people", icon: "◉", adminOnly: true },
+  { label: "Clients", href: "#", icon: "◈", soon: true, adminOnly: false },
+  { label: "Tasks", href: "#", icon: "◻", soon: true, adminOnly: false },
+  { label: "Attendance", href: "/dashboard/attendance", icon: "◷", adminOnly: false },
+  { label: "KPIs", href: "#", icon: "◎", soon: true, adminOnly: false },
 ];
 
 export default function DashboardLayout({
@@ -20,6 +21,30 @@ export default function DashboardLayout({
 }) {
   const pathname = usePathname();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
+
+  useEffect(() => {
+    const checkRole = async () => {
+      const supabase = createClient();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data: emp } = await supabase
+        .from("employees")
+        .select("role")
+        .eq("email", user.email)
+        .single();
+
+      if (emp?.role === "Admin") setIsAdmin(true);
+    };
+    checkRole();
+  }, []);
+
+  const navItems = allNavItems.filter(
+    (item) => !item.adminOnly || isAdmin
+  );
 
   const closeSidebar = () => setSidebarOpen(false);
 
