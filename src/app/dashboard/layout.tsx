@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useState } from "react";
 
 const navItems = [
   { label: "Dashboard", href: "/dashboard", icon: "▦" },
@@ -18,17 +19,43 @@ export default function DashboardLayout({
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  const closeSidebar = () => setSidebarOpen(false);
 
   return (
     <div className="flex min-h-screen bg-[#0d0d0d]">
+      {/* Mobile overlay */}
+      {sidebarOpen && (
+        <div
+          className="fixed inset-0 bg-black/60 z-40 md:hidden"
+          onClick={closeSidebar}
+        />
+      )}
+
       {/* Sidebar */}
-      <aside className="w-56 shrink-0 border-r border-zinc-800 flex flex-col">
-        <div className="px-5 py-6 border-b border-zinc-800">
+      <aside
+        className={`
+          fixed inset-y-0 left-0 z-50 w-64 flex flex-col bg-[#0d0d0d] border-r border-zinc-800
+          transition-transform duration-200 ease-in-out
+          md:relative md:w-56 md:translate-x-0 md:shrink-0
+          ${sidebarOpen ? "translate-x-0" : "-translate-x-full"}
+        `}
+      >
+        <div className="px-5 py-5 border-b border-zinc-800 flex items-center justify-between">
           <span className="text-white font-bold text-lg tracking-tight">
             FlowDesk
           </span>
+          <button
+            onClick={closeSidebar}
+            className="md:hidden text-zinc-400 hover:text-white p-1 -mr-1"
+            aria-label="Close menu"
+          >
+            ✕
+          </button>
         </div>
-        <nav className="flex-1 px-3 py-4 space-y-1">
+
+        <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
           {navItems.map((item) => {
             const isActive =
               item.href !== "#" &&
@@ -40,7 +67,7 @@ export default function DashboardLayout({
               return (
                 <div
                   key={item.label}
-                  className="flex items-center justify-between px-3 py-2 rounded-md text-zinc-600 cursor-not-allowed"
+                  className="flex items-center justify-between px-3 py-2.5 rounded-md text-zinc-600 cursor-not-allowed"
                 >
                   <span className="flex items-center gap-2.5 text-sm">
                     <span>{item.icon}</span>
@@ -57,7 +84,8 @@ export default function DashboardLayout({
               <Link
                 key={item.label}
                 href={item.href}
-                className={`flex items-center gap-2.5 px-3 py-2 rounded-md text-sm transition-colors ${
+                onClick={closeSidebar}
+                className={`flex items-center gap-2.5 px-3 py-2.5 rounded-md text-sm transition-colors ${
                   isActive
                     ? "bg-zinc-800 text-white"
                     : "text-zinc-400 hover:text-white hover:bg-zinc-800/50"
@@ -69,13 +97,30 @@ export default function DashboardLayout({
             );
           })}
         </nav>
+
         <div className="px-5 py-4 border-t border-zinc-800">
           <p className="text-xs text-zinc-600">FlowDesk v0.1</p>
         </div>
       </aside>
 
-      {/* Main content */}
-      <main className="flex-1 overflow-auto">{children}</main>
+      {/* Main area */}
+      <div className="flex-1 flex flex-col min-w-0">
+        {/* Mobile top bar */}
+        <div className="md:hidden flex items-center gap-3 px-4 py-3 border-b border-zinc-800 bg-[#0d0d0d]">
+          <button
+            onClick={() => setSidebarOpen(true)}
+            className="text-zinc-400 hover:text-white p-1 -ml-1 text-xl leading-none"
+            aria-label="Open menu"
+          >
+            ☰
+          </button>
+          <span className="text-white font-bold text-base tracking-tight">
+            FlowDesk
+          </span>
+        </div>
+
+        <main className="flex-1 overflow-auto">{children}</main>
+      </div>
     </div>
   );
 }

@@ -91,15 +91,15 @@ export default function MyLeavesPage() {
   return (
     <div className="text-white">
       {/* Top bar */}
-      <header className="border-b border-zinc-800 px-8 py-4 flex items-center justify-between">
-        <div className="flex items-center gap-4">
+      <header className="border-b border-zinc-800 px-4 py-3 md:px-8 md:py-4 flex items-center justify-between gap-3">
+        <div className="flex items-center gap-3 min-w-0">
           <Link
             href="/dashboard/attendance"
-            className="text-zinc-400 hover:text-white text-sm transition-colors"
+            className="text-zinc-400 hover:text-white text-sm transition-colors min-h-[44px] flex items-center shrink-0"
           >
             ← Back
           </Link>
-          <div>
+          <div className="min-w-0">
             <p className="text-xs text-zinc-500 uppercase tracking-widest font-medium">
               Attendance
             </p>
@@ -108,13 +108,13 @@ export default function MyLeavesPage() {
         </div>
         <Link
           href="/dashboard/attendance/leave"
-          className="bg-zinc-800 text-white text-sm font-medium px-4 py-2 rounded-lg hover:bg-zinc-700 transition-colors"
+          className="shrink-0 bg-zinc-800 text-white text-sm font-medium px-3 py-2.5 rounded-lg hover:bg-zinc-700 transition-colors min-h-[44px] flex items-center"
         >
-          + Apply Leave
+          + Apply
         </Link>
       </header>
 
-      <div className="px-8 py-8 max-w-4xl space-y-6">
+      <div className="px-4 py-6 md:px-8 md:py-8 max-w-4xl space-y-6">
         {loading ? (
           <p className="text-zinc-500 text-sm">Loading…</p>
         ) : noEmployee ? (
@@ -123,43 +123,51 @@ export default function MyLeavesPage() {
           </p>
         ) : (
           <>
-            {/* Leave Balance Card */}
-            <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-6">
+            {/* Leave Balance Card — stacks on mobile */}
+            <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-5 md:p-6">
               <p className="text-xs text-zinc-500 uppercase tracking-widest font-medium mb-4">
                 Leave Balance · {new Date().getFullYear()}
               </p>
-              <div className="grid grid-cols-3 divide-x divide-zinc-800">
-                <div className="pr-6">
-                  <p className="text-3xl font-bold text-white">
+              <div className="grid grid-cols-3 gap-0 divide-x divide-zinc-800 sm:grid-cols-3">
+                <div className="pr-4 md:pr-6">
+                  <p className="text-2xl md:text-3xl font-bold text-white">
                     {TOTAL_LEAVES}
                   </p>
-                  <p className="text-zinc-400 text-sm mt-1">Total Paid Leaves</p>
-                  <p className="text-zinc-600 text-xs mt-0.5">2 per month</p>
-                </div>
-                <div className="px-6">
-                  <p className="text-3xl font-bold text-red-400">{usedDays}</p>
-                  <p className="text-zinc-400 text-sm mt-1">Used</p>
-                  <p className="text-zinc-600 text-xs mt-0.5">
-                    From approved leaves
+                  <p className="text-zinc-400 text-xs md:text-sm mt-1">
+                    Total Paid
+                  </p>
+                  <p className="text-zinc-600 text-xs mt-0.5 hidden sm:block">
+                    2 per month
                   </p>
                 </div>
-                <div className="pl-6">
+                <div className="px-4 md:px-6">
+                  <p className="text-2xl md:text-3xl font-bold text-red-400">
+                    {usedDays}
+                  </p>
+                  <p className="text-zinc-400 text-xs md:text-sm mt-1">Used</p>
+                  <p className="text-zinc-600 text-xs mt-0.5 hidden sm:block">
+                    Approved leaves
+                  </p>
+                </div>
+                <div className="pl-4 md:pl-6">
                   <p
-                    className={`text-3xl font-bold ${
+                    className={`text-2xl md:text-3xl font-bold ${
                       remaining <= 3 ? "text-amber-400" : "text-emerald-400"
                     }`}
                   >
                     {remaining}
                   </p>
-                  <p className="text-zinc-400 text-sm mt-1">Remaining</p>
-                  <p className="text-zinc-600 text-xs mt-0.5">
+                  <p className="text-zinc-400 text-xs md:text-sm mt-1">
+                    Remaining
+                  </p>
+                  <p className="text-zinc-600 text-xs mt-0.5 hidden sm:block">
                     Sundays excluded
                   </p>
                 </div>
               </div>
             </div>
 
-            {/* Leave History Table */}
+            {/* Leave History */}
             {leaves.length === 0 ? (
               <div className="bg-zinc-900 border border-zinc-800 rounded-xl px-6 py-10 text-center">
                 <p className="text-zinc-400 text-sm">
@@ -174,63 +182,65 @@ export default function MyLeavesPage() {
               </div>
             ) : (
               <div className="border border-zinc-800 rounded-xl overflow-hidden">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="border-b border-zinc-800 bg-zinc-900">
-                      <th className="text-left px-5 py-3 text-zinc-500 font-medium">
-                        Leave Type
-                      </th>
-                      <th className="text-left px-5 py-3 text-zinc-500 font-medium">
-                        Dates
-                      </th>
-                      <th className="text-left px-5 py-3 text-zinc-500 font-medium">
-                        Days
-                      </th>
-                      <th className="text-left px-5 py-3 text-zinc-500 font-medium">
-                        Status
-                      </th>
-                      <th className="text-left px-5 py-3 text-zinc-500 font-medium">
-                        Applied On
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-zinc-800/60">
-                    {leaves.map((leave) => {
-                      const days = countDaysExcludingSundays(
-                        leave.start_date,
-                        leave.end_date
-                      );
-                      return (
-                        <tr key={leave.id} className="bg-zinc-900/40">
-                          <td className="px-5 py-3.5 text-white font-medium">
-                            {leave.leave_type}
-                          </td>
-                          <td className="px-5 py-3.5 text-zinc-300 whitespace-nowrap">
-                            {fmtDate(leave.start_date)}
-                            {leave.start_date !== leave.end_date && (
-                              <span className="text-zinc-500">
-                                {" "}→ {fmtDate(leave.end_date)}
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm min-w-[520px]">
+                    <thead>
+                      <tr className="border-b border-zinc-800 bg-zinc-900">
+                        <th className="text-left px-4 py-3 text-zinc-500 font-medium whitespace-nowrap">
+                          Leave Type
+                        </th>
+                        <th className="text-left px-4 py-3 text-zinc-500 font-medium whitespace-nowrap">
+                          Dates
+                        </th>
+                        <th className="text-left px-4 py-3 text-zinc-500 font-medium whitespace-nowrap">
+                          Days
+                        </th>
+                        <th className="text-left px-4 py-3 text-zinc-500 font-medium whitespace-nowrap">
+                          Status
+                        </th>
+                        <th className="text-left px-4 py-3 text-zinc-500 font-medium whitespace-nowrap">
+                          Applied On
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-zinc-800/60">
+                      {leaves.map((leave) => {
+                        const days = countDaysExcludingSundays(
+                          leave.start_date,
+                          leave.end_date
+                        );
+                        return (
+                          <tr key={leave.id} className="bg-zinc-900/40">
+                            <td className="px-4 py-3.5 text-white font-medium whitespace-nowrap">
+                              {leave.leave_type}
+                            </td>
+                            <td className="px-4 py-3.5 text-zinc-300 whitespace-nowrap">
+                              {fmtDate(leave.start_date)}
+                              {leave.start_date !== leave.end_date && (
+                                <span className="text-zinc-500">
+                                  {" "}→ {fmtDate(leave.end_date)}
+                                </span>
+                              )}
+                            </td>
+                            <td className="px-4 py-3.5 text-zinc-400 whitespace-nowrap">
+                              {days} {days === 1 ? "day" : "days"}
+                            </td>
+                            <td className="px-4 py-3.5 whitespace-nowrap">
+                              <span
+                                className={`text-[11px] font-medium px-2.5 py-1 rounded-full border capitalize ${statusStyle[leave.status]}`}
+                              >
+                                {leave.status}
                               </span>
-                            )}
-                          </td>
-                          <td className="px-5 py-3.5 text-zinc-400">
-                            {days} {days === 1 ? "day" : "days"}
-                          </td>
-                          <td className="px-5 py-3.5">
-                            <span
-                              className={`text-[11px] font-medium px-2.5 py-1 rounded-full border capitalize ${statusStyle[leave.status]}`}
-                            >
-                              {leave.status}
-                            </span>
-                          </td>
-                          <td className="px-5 py-3.5 text-zinc-500 text-xs">
-                            {fmtDate(leave.created_at)}
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
+                            </td>
+                            <td className="px-4 py-3.5 text-zinc-500 text-xs whitespace-nowrap">
+                              {fmtDate(leave.created_at)}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
               </div>
             )}
           </>

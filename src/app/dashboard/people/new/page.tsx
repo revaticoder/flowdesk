@@ -111,10 +111,10 @@ export default function AddEmployeePage() {
   return (
     <div className="text-white">
       {/* Top bar */}
-      <header className="border-b border-zinc-800 px-8 py-4 flex items-center gap-4">
+      <header className="border-b border-zinc-800 px-4 py-3 md:px-8 md:py-4 flex items-center gap-3">
         <Link
           href="/dashboard/people"
-          className="text-zinc-400 hover:text-white text-sm transition-colors"
+          className="text-zinc-400 hover:text-white text-sm transition-colors min-h-[44px] flex items-center"
         >
           ← Back
         </Link>
@@ -126,7 +126,7 @@ export default function AddEmployeePage() {
         </div>
       </header>
 
-      <div className="px-8 py-8 max-w-2xl">
+      <div className="px-4 py-6 md:px-8 md:py-8 max-w-2xl">
         <form onSubmit={handleSubmit} className="space-y-5">
           {/* Full Name */}
           <Field label="Full Name" required>
@@ -154,8 +154,8 @@ export default function AddEmployeePage() {
             />
           </Field>
 
-          {/* Role + Department row */}
-          <div className="grid grid-cols-2 gap-4">
+          {/* Role + Department — stack on mobile */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Field label="Role" required>
               <select
                 name="role"
@@ -260,7 +260,7 @@ export default function AddEmployeePage() {
             <button
               type="submit"
               disabled={saving}
-              className="bg-white text-black text-sm font-semibold px-6 py-2.5 rounded-lg hover:bg-zinc-200 transition-colors disabled:opacity-50"
+              className="w-full sm:w-auto bg-white text-black text-sm font-semibold px-6 py-3 rounded-lg hover:bg-zinc-200 transition-colors disabled:opacity-50 min-h-[44px]"
             >
               {saving ? "Saving..." : "Save Employee"}
             </button>
@@ -292,7 +292,7 @@ function Field({
 }
 
 const inputClass =
-  "w-full bg-zinc-900 border border-zinc-700 text-white placeholder-zinc-500 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:border-zinc-500";
+  "w-full bg-zinc-900 border border-zinc-700 text-white placeholder-zinc-500 rounded-lg px-4 py-3 text-sm focus:outline-none focus:border-zinc-500 min-h-[44px]";
 
 const selectClass =
-  "w-full bg-zinc-900 border border-zinc-700 text-white rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:border-zinc-500";
+  "w-full bg-zinc-900 border border-zinc-700 text-white rounded-lg px-4 py-3 text-sm focus:outline-none focus:border-zinc-500 min-h-[44px]";

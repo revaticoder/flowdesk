@@ -53,8 +53,8 @@ export default function PeoplePage() {
   return (
     <div className="text-white">
       {/* Top bar */}
-      <header className="border-b border-zinc-800 px-8 py-4 flex items-center justify-between">
-        <div>
+      <header className="border-b border-zinc-800 px-4 py-3 md:px-8 md:py-4 flex items-center justify-between gap-3">
+        <div className="min-w-0">
           <p className="text-xs text-zinc-500 uppercase tracking-widest font-medium">
             People
           </p>
@@ -64,20 +64,20 @@ export default function PeoplePage() {
         </div>
         <Link
           href="/dashboard/people/new"
-          className="bg-white text-black text-sm font-medium px-4 py-2 rounded-lg hover:bg-zinc-200 transition-colors"
+          className="shrink-0 bg-white text-black text-sm font-medium px-3 py-2.5 md:px-4 rounded-lg hover:bg-zinc-200 transition-colors min-h-[44px] flex items-center"
         >
-          + Add Employee
+          + Add
         </Link>
       </header>
 
-      <div className="px-8 py-6">
+      <div className="px-4 py-5 md:px-8 md:py-6">
         {/* Search */}
         <input
           type="text"
           placeholder="Search by name or role..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          className="w-full max-w-sm bg-zinc-900 border border-zinc-700 text-white placeholder-zinc-500 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:border-zinc-500 mb-6"
+          className="w-full md:max-w-sm bg-zinc-900 border border-zinc-700 text-white placeholder-zinc-500 rounded-lg px-4 py-3 text-sm focus:outline-none focus:border-zinc-500 mb-5"
         />
 
         {loading ? (
@@ -90,9 +90,9 @@ export default function PeoplePage() {
               <Link
                 key={emp.id}
                 href={`/dashboard/people/${emp.id}`}
-                className="bg-zinc-900 border border-zinc-800 rounded-xl p-5 hover:border-zinc-600 transition-colors group"
+                className="bg-zinc-900 border border-zinc-800 rounded-xl p-5 hover:border-zinc-600 transition-colors group active:bg-zinc-800"
               >
-                {/* Avatar placeholder */}
+                {/* Avatar */}
                 <div className="w-10 h-10 rounded-full bg-zinc-700 flex items-center justify-center text-white font-semibold text-sm mb-3">
                   {emp.full_name
                     .split(" ")
@@ -108,7 +108,7 @@ export default function PeoplePage() {
                 <p className="text-zinc-400 text-xs mt-0.5">{emp.role}</p>
                 <p className="text-zinc-500 text-xs mt-0.5">{emp.department}</p>
 
-                <div className="flex items-center gap-2 mt-3">
+                <div className="flex items-center gap-2 mt-3 flex-wrap">
                   <span
                     className={`text-[11px] font-medium px-2 py-0.5 rounded-full ${
                       seniorityColor[emp.seniority] ??

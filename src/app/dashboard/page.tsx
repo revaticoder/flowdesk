@@ -18,7 +18,7 @@ export default async function DashboardPage() {
   return (
     <div className="text-white">
       {/* Top bar */}
-      <header className="border-b border-zinc-800 px-8 py-4 flex items-center justify-between">
+      <header className="border-b border-zinc-800 px-4 py-3 md:px-8 md:py-4 flex items-center justify-between">
         <div>
           <p className="text-xs text-zinc-500 uppercase tracking-widest font-medium">
             Dashboard
@@ -30,7 +30,7 @@ export default async function DashboardPage() {
         <form action={logout}>
           <button
             type="submit"
-            className="text-sm text-zinc-400 hover:text-white transition-colors"
+            className="text-sm text-zinc-400 hover:text-white transition-colors min-h-[44px] px-2"
           >
             Logout
           </button>
@@ -38,8 +38,8 @@ export default async function DashboardPage() {
       </header>
 
       {/* Content */}
-      <div className="px-8 py-8">
-        <p className="text-zinc-500 text-sm mb-6">
+      <div className="px-4 py-6 md:px-8 md:py-8">
+        <p className="text-zinc-500 text-sm mb-6 truncate">
           Signed in as{" "}
           <span className="text-zinc-300 font-medium">{user.email}</span>
         </p>
