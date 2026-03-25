@@ -69,7 +69,7 @@ export default function DashboardLayout({
       >
         <div className="px-5 py-5 border-b border-zinc-800 flex items-center justify-between">
           <span className="text-white font-bold text-lg tracking-tight">
-            FlowDesk
+            RevFlow
           </span>
           <button
             onClick={closeSidebar}
@@ -124,7 +124,7 @@ export default function DashboardLayout({
         </nav>
 
         <div className="px-5 py-4 border-t border-zinc-800">
-          <p className="text-xs text-zinc-600">FlowDesk v0.1</p>
+          <p className="text-xs text-zinc-600">RevFlow v0.1</p>
         </div>
       </aside>
 
@@ -140,7 +140,7 @@ export default function DashboardLayout({
             ☰
           </button>
           <span className="text-white font-bold text-base tracking-tight">
-            FlowDesk
+            RevFlow
           </span>
         </div>
 

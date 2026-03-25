@@ -7,7 +7,7 @@ export default function LoginPage() {
         {/* Logo */}
         <div className="mb-8 text-center">
           <h1 className="text-2xl font-bold text-white tracking-tight">
-            FlowDesk
+            RevFlow
           </h1>
           <p className="text-zinc-500 text-sm mt-1">Sign in to your account</p>
         </div>

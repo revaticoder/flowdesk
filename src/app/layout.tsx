@@ -2,8 +2,8 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "FlowDesk",
-  description: "Agency management portal for digital marketing agencies",
+  title: "RevFlow",
+  description: "The Agency Operating System",
 };
 
 export default function RootLayout({

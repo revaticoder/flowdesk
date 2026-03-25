@@ -23,13 +23,13 @@ export async function POST(req: NextRequest) {
     });
 
   const { error } = await resend.emails.send({
-    from: "FlowDesk <onboarding@resend.dev>",
+    from: "RevFlow <onboarding@resend.dev>",
     to: founderEmail,
     subject: `New Leave Request - ${employeeName}`,
     html: `
       <div style="font-family: Arial, sans-serif; max-width: 560px; color: #1a1a1a;">
         <h2 style="margin-bottom: 4px;">New Leave Request</h2>
-        <p style="color: #666; margin-top: 0;">Submitted via FlowDesk</p>
+        <p style="color: #666; margin-top: 0;">Submitted via RevFlow</p>
         <table style="width: 100%; border-collapse: collapse; margin-top: 20px;">
           <tr>
             <td style="padding: 10px 0; border-bottom: 1px solid #eee; color: #555; width: 140px;">Employee</td>
@@ -53,7 +53,7 @@ export async function POST(req: NextRequest) {
           </tr>
         </table>
         <p style="margin-top: 28px; padding: 14px 18px; background: #f5f5f5; border-radius: 6px; font-size: 14px; color: #444;">
-          Please log in to <strong>FlowDesk</strong> to approve or reject this request under
+          Please log in to <strong>RevFlow</strong> to approve or reject this request under
           <strong>Attendance → Admin</strong>.
         </p>
       </div>

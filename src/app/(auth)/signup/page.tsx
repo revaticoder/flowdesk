@@ -7,7 +7,7 @@ export default function SignupPage() {
         {/* Logo */}
         <div className="mb-8 text-center">
           <h1 className="text-2xl font-bold text-white tracking-tight">
-            FlowDesk
+            RevFlow
           </h1>
           <p className="text-zinc-500 text-sm mt-1">Create your agency account</p>
         </div>
