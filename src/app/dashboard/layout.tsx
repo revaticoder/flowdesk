@@ -8,7 +8,7 @@ const navItems = [
   { label: "People", href: "/dashboard/people", icon: "◉" },
   { label: "Clients", href: "#", icon: "◈", soon: true },
   { label: "Tasks", href: "#", icon: "◻", soon: true },
-  { label: "Attendance", href: "#", icon: "◷", soon: true },
+  { label: "Attendance", href: "/dashboard/attendance", icon: "◷" },
   { label: "KPIs", href: "#", icon: "◎", soon: true },
 ];
 
