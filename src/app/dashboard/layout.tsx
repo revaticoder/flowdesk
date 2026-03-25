@@ -8,7 +8,7 @@ import { createClient } from "@/lib/supabase/client";
 const allNavItems = [
   { label: "Dashboard", href: "/dashboard", icon: "▦", adminOnly: false },
   { label: "People", href: "/dashboard/people", icon: "◉", adminOnly: true },
-  { label: "Clients", href: "#", icon: "◈", soon: true, adminOnly: false },
+  { label: "Clients", href: "/dashboard/clients", icon: "◈", adminOnly: true },
   { label: "Tasks", href: "#", icon: "◻", soon: true, adminOnly: false },
   { label: "Attendance", href: "/dashboard/attendance", icon: "◷", adminOnly: false },
   { label: "KPIs", href: "#", icon: "◎", soon: true, adminOnly: false },
@@ -29,13 +29,13 @@ export default function DashboardLayout({
       const {
         data: { user },
       } = await supabase.auth.getUser();
-      if (!user) return;
+      if (!user?.email) return;
 
       const { data: emp } = await supabase
         .from("employees")
         .select("role")
         .eq("email", user.email)
-        .single();
+        .maybeSingle();
 
       if (emp?.role === "Admin") setIsAdmin(true);
     };
