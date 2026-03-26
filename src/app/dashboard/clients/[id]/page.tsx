@@ -21,6 +21,23 @@ type Client = {
   employees: { full_name: string } | null;
 };
 
+type Mandate = {
+  id: string;
+  mandate_type: string;
+  platform: string | null;
+  status: string;
+  fulfillment_percentage: number | null;
+  renewal_date: string | null;
+  monthly_value: number | null;
+};
+
+const MANDATE_STATUS_COLOR: Record<string, string> = {
+  Active: "text-emerald-400 bg-emerald-400/10 border-emerald-400/20",
+  Paused: "text-yellow-400 bg-yellow-400/10 border-yellow-400/20",
+  Completed: "text-blue-400 bg-blue-400/10 border-blue-400/20",
+  Cancelled: "text-zinc-500 bg-zinc-800 border-zinc-700",
+};
+
 type HistoryEntry = {
   id: string;
   from_stage: string | null;
@@ -60,6 +77,7 @@ export default function ClientProfilePage() {
   const [manualStage, setManualStage] = useState("");
   const [stageNote, setStageNote] = useState("");
   const [showStagePanel, setShowStagePanel] = useState(false);
+  const [mandates, setMandates] = useState<Mandate[]>([]);
 
   useEffect(() => {
     const init = async () => {
@@ -68,7 +86,7 @@ export default function ClientProfilePage() {
         data: { user },
       } = await supabase.auth.getUser();
 
-      const [clientRes, histRes, meRes] = await Promise.all([
+      const [clientRes, histRes, meRes, mandatesRes] = await Promise.all([
         supabase
           .from("clients")
           .select("*, employees!clients_assigned_to_fkey(full_name)")
@@ -82,6 +100,11 @@ export default function ClientProfilePage() {
         user
           ? supabase.from("employees").select("full_name").eq("email", user.email!).single()
           : Promise.resolve({ data: null }),
+        supabase
+          .from("mandates")
+          .select("id, mandate_type, platform, status, fulfillment_percentage, renewal_date, monthly_value")
+          .eq("client_id", id)
+          .order("created_at", { ascending: false }),
       ]);
 
       if (clientRes.data) {
@@ -90,6 +113,7 @@ export default function ClientProfilePage() {
       }
       setHistory(histRes.data ?? []);
       if (meRes.data) setCurrentUserName(meRes.data.full_name);
+      setMandates(mandatesRes.data ?? []);
       setLoading(false);
     };
     init();
@@ -312,6 +336,66 @@ export default function ClientProfilePage() {
               </>
             )}
           </div>
+        </div>
+
+        {/* Mandates */}
+        <div>
+          <div className="flex items-center justify-between mb-3">
+            <p className="text-xs text-zinc-500 uppercase tracking-widest font-medium">
+              Mandates
+            </p>
+            <Link
+              href={`/dashboard/mandates/new?client_id=${id}`}
+              className="text-xs text-zinc-400 hover:text-white border border-zinc-700 hover:border-zinc-500 px-3 py-1.5 rounded-lg transition-colors"
+            >
+              + Add Mandate
+            </Link>
+          </div>
+          {mandates.length === 0 ? (
+            <p className="text-zinc-600 text-sm">No mandates yet.</p>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {mandates.map((m) => (
+                <Link
+                  key={m.id}
+                  href={`/dashboard/mandates/${m.id}`}
+                  className="bg-zinc-900 border border-zinc-800 rounded-xl p-4 hover:border-zinc-700 transition-colors block"
+                >
+                  <div className="flex items-start justify-between gap-3 mb-3">
+                    <div className="min-w-0">
+                      <p className="text-white text-sm font-semibold truncate">{m.mandate_type}</p>
+                      {m.platform && (
+                        <p className="text-zinc-600 text-xs mt-0.5">{m.platform}</p>
+                      )}
+                    </div>
+                    <span
+                      className={`text-xs font-medium px-2 py-0.5 rounded-full border shrink-0 ${
+                        MANDATE_STATUS_COLOR[m.status] ?? "text-zinc-400 bg-zinc-800 border-zinc-700"
+                      }`}
+                    >
+                      {m.status}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-1.5">
+                      <div className="h-1.5 w-24 bg-zinc-800 rounded-full overflow-hidden">
+                        <div
+                          className="h-full bg-emerald-500 rounded-full"
+                          style={{ width: `${m.fulfillment_percentage ?? 0}%` }}
+                        />
+                      </div>
+                      <span className="text-zinc-500 text-xs">{m.fulfillment_percentage ?? 0}%</span>
+                    </div>
+                    {m.monthly_value != null && (
+                      <span className="text-zinc-500 text-xs">
+                        ₹{m.monthly_value.toLocaleString("en-IN")}/mo
+                      </span>
+                    )}
+                  </div>
+                </Link>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Stage History */}

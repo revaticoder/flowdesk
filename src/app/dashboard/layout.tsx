@@ -9,6 +9,7 @@ const allNavItems = [
   { label: "Dashboard", href: "/dashboard", icon: "▦", adminOnly: false },
   { label: "People", href: "/dashboard/people", icon: "◉", adminOnly: true },
   { label: "Clients", href: "/dashboard/clients", icon: "◈", adminOnly: true },
+  { label: "Mandates", href: "/dashboard/mandates", icon: "◑", adminOnly: true },
   { label: "Tasks", href: "#", icon: "◻", soon: true, adminOnly: false },
   { label: "Attendance", href: "/dashboard/attendance", icon: "◷", adminOnly: false },
   { label: "KPIs", href: "#", icon: "◎", soon: true, adminOnly: false },
