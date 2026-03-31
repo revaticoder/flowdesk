@@ -164,7 +164,6 @@ export default function MyTasksPage() {
     setUpdatingId(taskId);
     const supabase = createClient();
     const updates: Record<string, unknown> = { status: newStatus };
-    if (newStatus === "Completed") updates.completed_at = new Date().toISOString();
     await supabase.from("tasks").update(updates).eq("id", taskId);
     setTasks((prev) =>
       prev.map((t) => (t.id === taskId ? { ...t, status: newStatus } : t))

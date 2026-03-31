@@ -27,7 +27,6 @@ type Task = {
   due_date: string | null;
   points: number;
   revision_count: number;
-  completed_at: string | null;
   clients: { company_name: string } | null;
   mandates: { mandate_type: string } | null;
   assignee: { id: string; full_name: string } | null;
@@ -130,7 +129,7 @@ export default function TasksPage() {
       // Step 1: fetch raw tasks (no joins) — works even if FK relationships aren't configured
       const rawTasksQuery = supabase
         .from("tasks")
-        .select("id, title, client_id, mandate_id, assigned_to, reporting_to, task_type, priority, status, due_date, points, revision_count, completed_at")
+        .select("id, title, client_id, mandate_id, assigned_to, reporting_to, task_type, priority, status, due_date, points, revision_count")
         .order("due_date", { ascending: true, nullsFirst: false });
 
       const [rawTasksRes, empRes, clientsRes] = await Promise.all([
@@ -178,9 +177,6 @@ export default function TasksPage() {
     setUpdatingId(taskId);
     const supabase = createClient();
     const updates: Record<string, unknown> = { status: newStatus };
-    if (newStatus === "Completed") {
-      updates.completed_at = new Date().toISOString();
-    }
     if (newStatus === "Revision Requested") {
       updates.revision_count = (task.revision_count ?? 0) + 1;
     }
@@ -242,10 +238,6 @@ export default function TasksPage() {
                 newStatus === "Revision Requested"
                   ? (t.revision_count ?? 0) + 1
                   : t.revision_count,
-              completed_at:
-                newStatus === "Completed"
-                  ? new Date().toISOString()
-                  : t.completed_at,
             }
           : t
       )

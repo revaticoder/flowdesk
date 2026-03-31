@@ -32,7 +32,6 @@ type Task = {
   points: number;
   revision_count: number;
   created_at: string;
-  completed_at: string | null;
   clients: { id: string; company_name: string } | null;
   mandates: { id: string; mandate_type: string } | null;
   assignee: { id: string; full_name: string; role: string } | null;
@@ -139,9 +138,6 @@ export default function TaskDetailPage() {
     const supabase = createClient();
 
     const updates: Record<string, unknown> = { status: newStatus };
-    if (newStatus === "Completed") {
-      updates.completed_at = new Date().toISOString();
-    }
 
     const { error: err } = await supabase
       .from("tasks")
@@ -210,11 +206,7 @@ export default function TaskDetailPage() {
       setTimeout(() => setPointsFlash(null), 3000);
     }
 
-    setTask((prev) =>
-      prev
-        ? { ...prev, status: newStatus, completed_at: newStatus === "Completed" ? new Date().toISOString() : prev.completed_at }
-        : prev
-    );
+    setTask((prev) => prev ? { ...prev, status: newStatus } : prev);
     setActing(false);
   };
 
@@ -591,11 +583,6 @@ export default function TaskDetailPage() {
                   <p className="text-emerald-400 text-sm font-medium">
                     ✅ Task Completed
                   </p>
-                  {task.completed_at && (
-                    <p className="text-zinc-600 text-xs mt-0.5">
-                      {fmtDate(task.completed_at)}
-                    </p>
-                  )}
                 </div>
               )}
 
@@ -770,7 +757,7 @@ async function checkAndAwardBadges(
     .select("id")
     .eq("assigned_to", employeeId)
     .eq("status", "Completed")
-    .order("completed_at", { ascending: false })
+    .order("created_at", { ascending: false })
     .limit(5);
 
   if (recentCompleted && recentCompleted.length >= 5) {
