@@ -144,7 +144,27 @@ export default function TasksPage() {
         supabase.from("clients").select("id, company_name").order("company_name"),
       ]);
 
-      setTasks((tasksRes.data as unknown as Task[]) ?? []);
+      console.log("[TaskBoard] auth user:", user.email);
+      console.log("[TaskBoard] employee record:", emp);
+      console.log("[TaskBoard] is admin:", admin);
+      console.log("[TaskBoard] tasksRes.error:", tasksRes.error);
+      console.log("[TaskBoard] tasksRes.data length:", tasksRes.data?.length ?? "null");
+      console.log("[TaskBoard] tasksRes.data sample:", tasksRes.data?.slice(0, 2));
+
+      // If the full join query errored, try a plain query without FK joins to isolate the problem
+      if (tasksRes.error || !tasksRes.data) {
+        console.warn("[TaskBoard] Full join query failed — trying plain query without joins");
+        const plainQuery = supabase
+          .from("tasks")
+          .select("id, title, client_id, mandate_id, assigned_to, reporting_to, task_type, priority, status, due_date, points, revision_count, completed_at");
+        const plainRes = await (admin ? plainQuery : plainQuery.eq("assigned_to", emp?.id ?? ""));
+        console.log("[TaskBoard] plain query error:", plainRes.error);
+        console.log("[TaskBoard] plain query rows:", plainRes.data?.length ?? "null");
+        setTasks((plainRes.data as unknown as Task[]) ?? []);
+      } else {
+        setTasks((tasksRes.data as unknown as Task[]) ?? []);
+      }
+
       setEmployees(empRes.data ?? []);
       setClients(clientsRes.data ?? []);
       setLoading(false);
