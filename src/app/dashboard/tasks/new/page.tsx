@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
@@ -137,6 +137,14 @@ function Field({
 }
 
 export default function NewTaskPage() {
+  return (
+    <Suspense fallback={<div className="p-8 text-zinc-500 text-sm">Loading…</div>}>
+      <NewTaskForm />
+    </Suspense>
+  );
+}
+
+function NewTaskForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const prefilledClientId = searchParams.get("client_id") ?? "";
