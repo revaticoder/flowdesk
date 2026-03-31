@@ -158,7 +158,7 @@ export default function SOWPage() {
       const res = await fetch("/api/sow-breakdown", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ sow_text: sowText, month: selectedMonth }),
+        body: JSON.stringify({ sowText, client: clientName, month: selectedMonth }),
       });
       const data = await res.json();
       if (!res.ok) {
