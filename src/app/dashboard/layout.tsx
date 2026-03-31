@@ -10,10 +10,12 @@ const allNavItems = [
   { label: "People", href: "/dashboard/people", icon: "◉", adminOnly: true },
   { label: "Clients", href: "/dashboard/clients", icon: "◈", adminOnly: true },
   { label: "Mandates", href: "/dashboard/mandates", icon: "◑", adminOnly: true },
-  { label: "Tasks", href: "#", icon: "◻", soon: true, adminOnly: false },
+  { label: "Tasks", href: "/dashboard/tasks", icon: "◻", adminOnly: false },
   { label: "Attendance", href: "/dashboard/attendance", icon: "◷", adminOnly: false },
   { label: "KPIs", href: "#", icon: "◎", soon: true, adminOnly: false },
 ];
+
+type NavItem = (typeof allNavItems)[number] & { overdueCnt?: number };
 
 export default function DashboardLayout({
   children,
@@ -23,6 +25,7 @@ export default function DashboardLayout({
   const pathname = usePathname();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [overdueCnt, setOverdueCnt] = useState(0);
 
   useEffect(() => {
     const checkRole = async () => {
@@ -34,18 +37,38 @@ export default function DashboardLayout({
 
       const { data: emp } = await supabase
         .from("employees")
-        .select("role")
+        .select("id, role")
         .eq("email", user.email)
         .maybeSingle();
 
       if (emp?.role === "Admin") setIsAdmin(true);
+
+      // Count overdue tasks for this employee
+      const today = new Date().toISOString().slice(0, 10);
+      let overdueQuery = supabase
+        .from("tasks")
+        .select("id", { count: "exact", head: true })
+        .lt("due_date", today)
+        .not("status", "eq", "Completed");
+
+      if (emp?.role !== "Admin" && emp?.id) {
+        overdueQuery = overdueQuery.eq("assigned_to", emp.id) as typeof overdueQuery;
+      }
+
+      const { count } = await overdueQuery;
+      setOverdueCnt(count ?? 0);
     };
     checkRole();
   }, []);
 
-  const navItems = allNavItems.filter(
-    (item) => !item.adminOnly || isAdmin
-  );
+  const navItems = allNavItems
+    .filter((item) => !item.adminOnly || isAdmin)
+    .map((item) => {
+      if (item.label === "Tasks") {
+        return { ...item, overdueCnt };
+      }
+      return item;
+    }) as NavItem[];
 
   const closeSidebar = () => setSidebarOpen(false);
 
@@ -111,14 +134,21 @@ export default function DashboardLayout({
                 key={item.label}
                 href={item.href}
                 onClick={closeSidebar}
-                className={`flex items-center gap-2.5 px-3 py-2.5 rounded-md text-sm transition-colors ${
+                className={`flex items-center justify-between px-3 py-2.5 rounded-md text-sm transition-colors ${
                   isActive
                     ? "bg-zinc-800 text-white"
                     : "text-zinc-400 hover:text-white hover:bg-zinc-800/50"
                 }`}
               >
-                <span>{item.icon}</span>
-                {item.label}
+                <span className="flex items-center gap-2.5">
+                  <span>{item.icon}</span>
+                  {item.label}
+                </span>
+                {(item as NavItem).overdueCnt ? (
+                  <span className="text-[10px] bg-red-500 text-white px-1.5 py-0.5 rounded-full font-bold min-w-[18px] text-center">
+                    {(item as NavItem).overdueCnt}
+                  </span>
+                ) : null}
               </Link>
             );
           })}

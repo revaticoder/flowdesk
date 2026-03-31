@@ -60,6 +60,15 @@ type Mandate = {
 
 type Employee = { id: string; full_name: string };
 
+type MandateTask = {
+  id: string;
+  title: string;
+  priority: string;
+  status: string;
+  due_date: string | null;
+  assignee: { full_name: string } | null;
+};
+
 function fmtDate(d: string) {
   return new Date(d).toLocaleDateString("en-IN", {
     day: "numeric",
@@ -113,6 +122,8 @@ export default function MandateDetailPage() {
   const router = useRouter();
   const [mandate, setMandate] = useState<Mandate | null>(null);
   const [employees, setEmployees] = useState<Employee[]>([]);
+  const [mandateTasks, setMandateTasks] = useState<MandateTask[]>([]);
+  const [isAdmin, setIsAdmin] = useState(false);
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -135,13 +146,29 @@ export default function MandateDetailPage() {
   useEffect(() => {
     const load = async () => {
       const supabase = createClient();
-      const [mandateRes, empRes] = await Promise.all([
+
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user?.email) {
+        const { data: emp } = await supabase
+          .from("employees")
+          .select("role")
+          .eq("email", user.email)
+          .maybeSingle();
+        if (emp?.role === "Admin") setIsAdmin(true);
+      }
+
+      const [mandateRes, empRes, tasksRes] = await Promise.all([
         supabase
           .from("mandates")
           .select("*, clients(company_name)")
           .eq("id", id)
           .single(),
         supabase.from("employees").select("id, full_name").order("full_name"),
+        supabase
+          .from("tasks")
+          .select("id, title, priority, status, due_date, assignee:assigned_to(full_name)")
+          .eq("mandate_id", id)
+          .order("due_date", { ascending: true, nullsFirst: false }),
       ]);
 
       if (mandateRes.data) {
@@ -165,6 +192,7 @@ export default function MandateDetailPage() {
         );
       }
       setEmployees(empRes.data ?? []);
+      setMandateTasks((tasksRes.data as unknown as MandateTask[]) ?? []);
       setLoading(false);
     };
     load();
@@ -412,6 +440,97 @@ export default function MandateDetailPage() {
                 </span>
               ))}
             </div>
+          </div>
+        )}
+
+        {/* Tasks Section */}
+        {!editing && (
+          <div className="bg-zinc-900 border border-zinc-800 rounded-xl overflow-hidden">
+            <div className="flex items-center justify-between px-5 py-3 border-b border-zinc-800">
+              <div>
+                <p className="text-xs text-zinc-500 uppercase tracking-widest font-medium">
+                  Tasks
+                </p>
+                {mandateTasks.length > 0 && (
+                  <div className="flex items-center gap-2 mt-1">
+                    <div className="w-32 bg-zinc-800 rounded-full h-1.5">
+                      <div
+                        className="bg-emerald-400 h-1.5 rounded-full"
+                        style={{
+                          width: `${Math.round(
+                            (mandateTasks.filter((t) => t.status === "Completed").length /
+                              mandateTasks.length) *
+                              100
+                          )}%`,
+                        }}
+                      />
+                    </div>
+                    <span className="text-xs text-zinc-500">
+                      {mandateTasks.filter((t) => t.status === "Completed").length}/{mandateTasks.length} done
+                    </span>
+                  </div>
+                )}
+              </div>
+              {isAdmin && (
+                <Link
+                  href={`/dashboard/tasks/new?mandate_id=${id}&client_id=${mandate.client_id}`}
+                  className="text-xs text-zinc-400 hover:text-white border border-zinc-700 hover:border-zinc-500 px-3 py-1.5 rounded-lg transition-colors"
+                >
+                  + Add Task
+                </Link>
+              )}
+            </div>
+            {mandateTasks.length === 0 ? (
+              <div className="px-5 py-6 text-center">
+                <p className="text-zinc-600 text-sm">No tasks for this mandate yet.</p>
+              </div>
+            ) : (
+              <div className="divide-y divide-zinc-800/60">
+                {mandateTasks.map((t) => (
+                  <Link
+                    key={t.id}
+                    href={`/dashboard/tasks/${t.id}`}
+                    className="flex items-center gap-3 px-5 py-3 hover:bg-zinc-800/30 transition-colors"
+                  >
+                    <div
+                      className={`w-2 h-2 rounded-full shrink-0 ${
+                        t.priority === "Urgent"
+                          ? "bg-red-500"
+                          : t.priority === "High"
+                          ? "bg-orange-400"
+                          : t.priority === "Medium"
+                          ? "bg-yellow-400"
+                          : "bg-green-400"
+                      }`}
+                    />
+                    <div className="flex-1 min-w-0">
+                      <p className={`text-sm truncate ${t.status === "Completed" ? "text-zinc-500 line-through" : "text-white"}`}>
+                        {t.title}
+                      </p>
+                      <p className="text-xs text-zinc-600 truncate">
+                        {t.assignee?.full_name ?? "Unassigned"}
+                        {t.due_date && <> · {new Date(t.due_date).toLocaleDateString("en-IN", { day: "numeric", month: "short" })}</>}
+                      </p>
+                    </div>
+                    <span
+                      className={`text-[10px] font-medium px-1.5 py-0.5 rounded-full border shrink-0 ${
+                        t.status === "Completed"
+                          ? "text-emerald-400 bg-emerald-400/10 border-emerald-400/20"
+                          : t.status === "In Review"
+                          ? "text-violet-400 bg-violet-400/10 border-violet-400/20"
+                          : t.status === "In Progress"
+                          ? "text-blue-400 bg-blue-400/10 border-blue-400/20"
+                          : t.status === "Revision Requested"
+                          ? "text-orange-400 bg-orange-400/10 border-orange-400/20"
+                          : "text-zinc-400 bg-zinc-400/10 border-zinc-400/20"
+                      }`}
+                    >
+                      {t.status}
+                    </span>
+                  </Link>
+                ))}
+              </div>
+            )}
           </div>
         )}
 
