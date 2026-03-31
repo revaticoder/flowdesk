@@ -105,6 +105,10 @@ export default function TasksPage() {
   // Inline status updating
   const [updatingId, setUpdatingId] = useState<string | null>(null);
 
+  // Delete
+  const [deleteTarget, setDeleteTarget] = useState<{ id: string; title: string } | null>(null);
+  const [deleting, setDeleting] = useState(false);
+
   useEffect(() => {
     const load = async () => {
       const supabase = createClient();
@@ -245,6 +249,17 @@ export default function TasksPage() {
     setUpdatingId(null);
   };
 
+  const handleDeleteTask = async () => {
+    if (!deleteTarget) return;
+    setDeleting(true);
+    const supabase = createClient();
+    await supabase.from("employee_points").delete().eq("task_id", deleteTarget.id);
+    await supabase.from("tasks").delete().eq("id", deleteTarget.id);
+    setTasks((prev) => prev.filter((t) => t.id !== deleteTarget.id));
+    setDeleteTarget(null);
+    setDeleting(false);
+  };
+
   const filtered = useMemo(() => {
     if (!isAdmin) return tasks; // Employee sees all their tasks (already filtered by DB)
     return tasks.filter((t) => {
@@ -293,6 +308,35 @@ export default function TasksPage() {
   // ── Admin view ─────────────────────────────────────────────────────────────
   return (
     <div className="text-white flex flex-col min-h-full">
+      {/* Delete confirmation modal */}
+      {deleteTarget && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
+          <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-6 max-w-sm w-full space-y-4 shadow-2xl">
+            <h2 className="text-white font-semibold text-base">Delete task?</h2>
+            <p className="text-zinc-400 text-sm">
+              Are you sure you want to delete{" "}
+              <span className="text-white font-medium">&ldquo;{deleteTarget.title}&rdquo;</span>? This cannot be undone.
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setDeleteTarget(null)}
+                disabled={deleting}
+                className="flex-1 text-sm text-zinc-400 border border-zinc-700 hover:border-zinc-500 hover:text-white px-4 py-2 rounded-lg transition-colors min-h-[40px]"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleDeleteTask}
+                disabled={deleting}
+                className="flex-1 text-sm font-semibold bg-red-500/15 text-red-400 border border-red-500/30 hover:bg-red-500/25 px-4 py-2 rounded-lg transition-colors min-h-[40px] disabled:opacity-50"
+              >
+                {deleting ? "Deleting…" : "Delete"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Header */}
       <header className="border-b border-zinc-800 px-4 py-3 md:px-8 md:py-4 flex items-center justify-between gap-3 flex-wrap">
         <div>
@@ -433,6 +477,7 @@ export default function TasksPage() {
                     currentEmpRole={currentEmpRole}
                     updatingId={updatingId}
                     onStatusUpdate={handleStatusUpdate}
+                    onDelete={(id, title) => setDeleteTarget({ id, title })}
                   />
                 ))}
               </div>
@@ -626,6 +671,7 @@ function PlacardCard({
   currentEmpRole,
   updatingId,
   onStatusUpdate,
+  onDelete,
 }: {
   task: Task;
   isAdmin: boolean;
@@ -633,6 +679,7 @@ function PlacardCard({
   currentEmpRole: string;
   updatingId: string | null;
   onStatusUpdate: (id: string, status: string, task: Task) => void;
+  onDelete?: (id: string, title: string) => void;
 }) {
   const [menuOpen, setMenuOpen] = useState(false);
 
@@ -812,6 +859,14 @@ function PlacardCard({
                 </div>
               )}
             </div>
+          )}
+          {isAdmin && onDelete && (
+            <button
+              onClick={() => onDelete(task.id, task.title)}
+              className="text-xs font-medium text-red-500 hover:text-red-400 border border-transparent hover:border-red-500/20 hover:bg-red-500/5 px-2 py-1.5 rounded-lg transition-colors min-h-[32px]"
+            >
+              Delete
+            </button>
           )}
           <Link
             href={`/dashboard/tasks/${task.id}`}

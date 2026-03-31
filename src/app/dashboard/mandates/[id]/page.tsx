@@ -129,6 +129,8 @@ export default function MandateDetailPage() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [sliderPct, setSliderPct] = useState(0);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   // Edit form state
   const [editForm, setEditForm] = useState({
@@ -268,8 +270,11 @@ export default function MandateDetailPage() {
   };
 
   const handleDelete = async () => {
-    if (!confirm("Delete this mandate? This cannot be undone.")) return;
+    setDeleting(true);
     const supabase = createClient();
+    // Delete linked tasks first
+    await supabase.from("tasks").delete().eq("mandate_id", id);
+    // Delete mandate
     await supabase.from("mandates").delete().eq("id", id);
     router.push("/dashboard/mandates");
   };
@@ -293,6 +298,36 @@ export default function MandateDetailPage() {
 
   return (
     <div className="text-white">
+      {/* Delete confirmation modal */}
+      {showDeleteModal && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
+          <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-6 max-w-sm w-full space-y-4 shadow-2xl">
+            <h2 className="text-white font-semibold text-base">Delete mandate?</h2>
+            <p className="text-zinc-400 text-sm">
+              Are you sure you want to delete{" "}
+              <span className="text-white font-medium">{mandate.mandate_type}</span>? This will also
+              delete all tasks linked to this mandate. This cannot be undone.
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowDeleteModal(false)}
+                disabled={deleting}
+                className="flex-1 text-sm text-zinc-400 border border-zinc-700 hover:border-zinc-500 hover:text-white px-4 py-2 rounded-lg transition-colors min-h-[40px]"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleDelete}
+                disabled={deleting}
+                className="flex-1 text-sm font-semibold bg-red-500/15 text-red-400 border border-red-500/30 hover:bg-red-500/25 px-4 py-2 rounded-lg transition-colors min-h-[40px] disabled:opacity-50"
+              >
+                {deleting ? "Deleting…" : "Delete"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Header */}
       <header className="border-b border-zinc-800 px-4 py-3 md:px-8 md:py-4 flex items-center justify-between gap-3">
         <div className="flex items-center gap-3 min-w-0">
@@ -391,7 +426,9 @@ export default function MandateDetailPage() {
                 </Row>
               )}
               {mandate.created_by && (
-                <Row label="Created By">{mandate.created_by}</Row>
+                <Row label="Created By">
+                  {employees.find((e) => e.id === mandate.created_by)?.full_name ?? mandate.created_by}
+                </Row>
               )}
             </div>
           </div>
@@ -705,7 +742,7 @@ export default function MandateDetailPage() {
                 Cancel
               </button>
               <button
-                onClick={handleDelete}
+                onClick={() => setShowDeleteModal(true)}
                 className="text-red-500 hover:text-red-400 text-sm px-4 py-2.5 rounded-lg transition-colors min-h-[44px] ml-auto"
               >
                 Delete Mandate

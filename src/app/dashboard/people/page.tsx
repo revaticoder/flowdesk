@@ -32,6 +32,8 @@ export default function PeoplePage() {
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
+  const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     const init = async () => {
@@ -42,14 +44,12 @@ export default function PeoplePage() {
       } = await supabase.auth.getUser();
       if (!user) return;
 
-      // Fetch the logged-in user's employee record to check role
       const { data: me } = await supabase
         .from("employees")
         .select("id, role")
         .eq("email", user.email)
         .single();
 
-      // Non-admins get redirected straight to their own profile
       if (!me || me.role !== "Admin") {
         if (me) {
           router.replace(`/dashboard/people/${me.id}`);
@@ -59,7 +59,6 @@ export default function PeoplePage() {
         return;
       }
 
-      // Admin: fetch all employees
       const { data, error } = await supabase
         .from("employees")
         .select("*")
@@ -69,6 +68,16 @@ export default function PeoplePage() {
     };
     init();
   }, [router]);
+
+  const handleDelete = async () => {
+    if (!deleteTarget) return;
+    setDeleting(true);
+    const supabase = createClient();
+    await supabase.from("employees").delete().eq("id", deleteTarget.id);
+    setEmployees((prev) => prev.filter((e) => e.id !== deleteTarget.id));
+    setDeleteTarget(null);
+    setDeleting(false);
+  };
 
   const filtered = employees.filter(
     (e) =>
@@ -82,6 +91,35 @@ export default function PeoplePage() {
 
   return (
     <div className="text-white">
+      {/* Delete confirmation modal */}
+      {deleteTarget && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
+          <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-6 max-w-sm w-full space-y-4 shadow-2xl">
+            <h2 className="text-white font-semibold text-base">Delete employee?</h2>
+            <p className="text-zinc-400 text-sm">
+              Are you sure you want to delete{" "}
+              <span className="text-white font-medium">{deleteTarget.name}</span>? This cannot be undone.
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setDeleteTarget(null)}
+                disabled={deleting}
+                className="flex-1 text-sm text-zinc-400 border border-zinc-700 hover:border-zinc-500 hover:text-white px-4 py-2 rounded-lg transition-colors min-h-[40px]"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleDelete}
+                disabled={deleting}
+                className="flex-1 text-sm font-semibold bg-red-500/15 text-red-400 border border-red-500/30 hover:bg-red-500/25 px-4 py-2 rounded-lg transition-colors min-h-[40px] disabled:opacity-50"
+              >
+                {deleting ? "Deleting…" : "Delete"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Top bar */}
       <header className="border-b border-zinc-800 px-4 py-3 md:px-8 md:py-4 flex items-center justify-between gap-3">
         <div className="min-w-0">
@@ -115,47 +153,59 @@ export default function PeoplePage() {
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
             {filtered.map((emp) => (
-              <Link
-                key={emp.id}
-                href={`/dashboard/people/${emp.id}`}
-                className="bg-zinc-900 border border-zinc-800 rounded-xl p-5 hover:border-zinc-600 transition-colors group active:bg-zinc-800"
-              >
-                {/* Avatar */}
-                <div className="w-10 h-10 rounded-full bg-zinc-700 flex items-center justify-center text-white font-semibold text-sm mb-3">
-                  {emp.full_name
-                    .split(" ")
-                    .map((n) => n[0])
-                    .join("")
-                    .slice(0, 2)
-                    .toUpperCase()}
-                </div>
+              <div key={emp.id} className="relative group">
+                <Link
+                  href={`/dashboard/people/${emp.id}`}
+                  className="bg-zinc-900 border border-zinc-800 rounded-xl p-5 hover:border-zinc-600 transition-colors block active:bg-zinc-800"
+                >
+                  {/* Avatar */}
+                  <div className="w-10 h-10 rounded-full bg-zinc-700 flex items-center justify-center text-white font-semibold text-sm mb-3">
+                    {emp.full_name
+                      .split(" ")
+                      .map((n) => n[0])
+                      .join("")
+                      .slice(0, 2)
+                      .toUpperCase()}
+                  </div>
 
-                <p className="text-white font-semibold text-sm leading-tight group-hover:text-zinc-200">
-                  {emp.full_name}
-                </p>
-                <p className="text-zinc-400 text-xs mt-0.5">{emp.role}</p>
-                <p className="text-zinc-500 text-xs mt-0.5">{emp.department}</p>
+                  <p className="text-white font-semibold text-sm leading-tight pr-10">
+                    {emp.full_name}
+                  </p>
+                  <p className="text-zinc-400 text-xs mt-0.5">{emp.role}</p>
+                  <p className="text-zinc-500 text-xs mt-0.5">{emp.department}</p>
 
-                <div className="flex items-center gap-2 mt-3 flex-wrap">
-                  <span
-                    className={`text-[11px] font-medium px-2 py-0.5 rounded-full ${
-                      seniorityColor[emp.seniority] ??
-                      "text-zinc-400 bg-zinc-800"
-                    }`}
-                  >
-                    {emp.seniority}
-                  </span>
-                  <span
-                    className={`text-[11px] font-medium px-2 py-0.5 rounded-full ${
-                      emp.is_active
-                        ? "text-emerald-400 bg-emerald-400/10"
-                        : "text-red-400 bg-red-400/10"
-                    }`}
-                  >
-                    {emp.is_active ? "Active" : "Inactive"}
-                  </span>
-                </div>
-              </Link>
+                  <div className="flex items-center gap-2 mt-3 flex-wrap">
+                    <span
+                      className={`text-[11px] font-medium px-2 py-0.5 rounded-full ${
+                        seniorityColor[emp.seniority] ??
+                        "text-zinc-400 bg-zinc-800"
+                      }`}
+                    >
+                      {emp.seniority}
+                    </span>
+                    <span
+                      className={`text-[11px] font-medium px-2 py-0.5 rounded-full ${
+                        emp.is_active
+                          ? "text-emerald-400 bg-emerald-400/10"
+                          : "text-red-400 bg-red-400/10"
+                      }`}
+                    >
+                      {emp.is_active ? "Active" : "Inactive"}
+                    </span>
+                  </div>
+                </Link>
+
+                {/* Delete button — visible on hover */}
+                <button
+                  onClick={(e) => {
+                    e.preventDefault();
+                    setDeleteTarget({ id: emp.id, name: emp.full_name });
+                  }}
+                  className="absolute top-3 right-3 text-[11px] font-medium text-red-500 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity px-2 py-1 rounded-md hover:bg-red-500/10 border border-transparent hover:border-red-500/20"
+                >
+                  Delete
+                </button>
+              </div>
             ))}
           </div>
         )}
