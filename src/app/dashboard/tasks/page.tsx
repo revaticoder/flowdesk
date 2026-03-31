@@ -127,44 +127,42 @@ export default function TasksPage() {
         if (admin) setIsAdmin(true);
       }
 
-      let tasksQuery = supabase
+      // Step 1: fetch raw tasks (no joins) — works even if FK relationships aren't configured
+      const rawTasksQuery = supabase
         .from("tasks")
-        .select(
-          `id, title, client_id, mandate_id, assigned_to, reporting_to, task_type, priority, status, due_date, points, revision_count, completed_at, clients(company_name), mandates(mandate_type), assignee:assigned_to(id, full_name), reporter:reporting_to(id, full_name)`
-        )
+        .select("id, title, client_id, mandate_id, assigned_to, reporting_to, task_type, priority, status, due_date, points, revision_count, completed_at")
         .order("due_date", { ascending: true, nullsFirst: false });
 
-      if (!admin && emp?.id) {
-        tasksQuery = tasksQuery.eq("assigned_to", emp.id) as typeof tasksQuery;
-      }
-
-      const [tasksRes, empRes, clientsRes] = await Promise.all([
-        tasksQuery,
+      const [rawTasksRes, empRes, clientsRes] = await Promise.all([
+        admin ? rawTasksQuery : rawTasksQuery.eq("assigned_to", emp?.id ?? ""),
         supabase.from("employees").select("id, full_name").order("full_name"),
         supabase.from("clients").select("id, company_name").order("company_name"),
       ]);
 
-      console.log("[TaskBoard] auth user:", user.email);
-      console.log("[TaskBoard] employee record:", emp);
-      console.log("[TaskBoard] is admin:", admin);
-      console.log("[TaskBoard] tasksRes.error:", tasksRes.error);
-      console.log("[TaskBoard] tasksRes.data length:", tasksRes.data?.length ?? "null");
-      console.log("[TaskBoard] tasksRes.data sample:", tasksRes.data?.slice(0, 2));
+      console.log("[TaskBoard] user:", user.email, "| admin:", admin, "| emp:", emp?.id);
+      console.log("[TaskBoard] raw tasks error:", rawTasksRes.error?.message);
+      console.log("[TaskBoard] raw tasks count:", rawTasksRes.data?.length ?? "null");
 
-      // If the full join query errored, try a plain query without FK joins to isolate the problem
-      if (tasksRes.error || !tasksRes.data) {
-        console.warn("[TaskBoard] Full join query failed — trying plain query without joins");
-        const plainQuery = supabase
-          .from("tasks")
-          .select("id, title, client_id, mandate_id, assigned_to, reporting_to, task_type, priority, status, due_date, points, revision_count, completed_at");
-        const plainRes = await (admin ? plainQuery : plainQuery.eq("assigned_to", emp?.id ?? ""));
-        console.log("[TaskBoard] plain query error:", plainRes.error);
-        console.log("[TaskBoard] plain query rows:", plainRes.data?.length ?? "null");
-        setTasks((plainRes.data as unknown as Task[]) ?? []);
-      } else {
-        setTasks((tasksRes.data as unknown as Task[]) ?? []);
+      if (rawTasksRes.error || !rawTasksRes.data) {
+        // Still failing — this is an RLS block. Log the full error for diagnosis.
+        console.error("[TaskBoard] BLOCKED — likely RLS. Full error:", rawTasksRes.error);
+        setLoading(false);
+        return;
       }
 
+      // Step 2: enrich tasks with client names, employee names from already-fetched lists
+      const empMap = Object.fromEntries((empRes.data ?? []).map((e) => [e.id, e.full_name]));
+      const clientMap = Object.fromEntries((clientsRes.data ?? []).map((c) => [c.id, c.company_name]));
+
+      const enriched = rawTasksRes.data.map((t) => ({
+        ...t,
+        clients: t.client_id ? { company_name: clientMap[t.client_id] ?? null } : null,
+        mandates: null, // mandate_type loaded separately on task detail page
+        assignee: t.assigned_to ? { id: t.assigned_to, full_name: empMap[t.assigned_to] ?? "Unknown" } : null,
+        reporter: t.reporting_to ? { id: t.reporting_to, full_name: empMap[t.reporting_to] ?? "Unknown" } : null,
+      }));
+
+      setTasks(enriched as unknown as Task[]);
       setEmployees(empRes.data ?? []);
       setClients(clientsRes.data ?? []);
       setLoading(false);
