@@ -9,6 +9,7 @@ import { PRIORITY_POINTS } from "@/lib/tasks";
 // ── Types ────────────────────────────────────────────────────────────────────
 
 type Client = { id: string; company_name: string };
+type Employee = { id: string; full_name: string; role: string };
 
 type GeneratedTask = {
   _id: string;
@@ -19,6 +20,7 @@ type GeneratedTask = {
   points: number;
   mandate_type: string;
   confirmed: boolean;
+  assigned_to: string | null;
 };
 
 type EditState = {
@@ -93,6 +95,7 @@ export default function SOWPage() {
   const [isAdmin, setIsAdmin] = useState(false);
   const [adminEmpId, setAdminEmpId] = useState<string | null>(null);
   const [clients, setClients] = useState<Client[]>([]);
+  const [employees, setEmployees] = useState<Employee[]>([]);
   const [pageLoading, setPageLoading] = useState(true);
 
   const [sowText, setSowText] = useState("");
@@ -132,12 +135,13 @@ export default function SOWPage() {
       setIsAdmin(true);
       setAdminEmpId(emp.id);
 
-      const { data: clientsData } = await supabase
-        .from("clients")
-        .select("id, company_name")
-        .order("company_name");
+      const [{ data: clientsData }, { data: employeesData }] = await Promise.all([
+        supabase.from("clients").select("id, company_name").order("company_name"),
+        supabase.from("employees").select("id, full_name, role").order("full_name"),
+      ]);
 
       setClients(clientsData ?? []);
+      setEmployees(employeesData ?? []);
       setPageLoading(false);
     })();
   }, [router]);
@@ -166,11 +170,12 @@ export default function SOWPage() {
         return;
       }
       const generated = (
-        data.tasks as Omit<GeneratedTask, "_id" | "confirmed">[]
+        data.tasks as Omit<GeneratedTask, "_id" | "confirmed" | "assigned_to">[]
       ).map((t, i) => ({
         ...t,
         _id: `gtask-${Date.now()}-${i}`,
         confirmed: false,
+        assigned_to: null,
         points:
           Number(t.points) ||
           PRIORITY_POINTS[t.priority as keyof typeof PRIORITY_POINTS] ||
@@ -186,6 +191,11 @@ export default function SOWPage() {
 
   const removeTask = (id: string) =>
     setTasks((prev) => prev.filter((t) => t._id !== id));
+
+  const assignTask = (id: string, empId: string | null) =>
+    setTasks((prev) =>
+      prev.map((t) => (t._id === id ? { ...t, assigned_to: empId } : t))
+    );
 
   const confirmTask = (id: string) =>
     setTasks((prev) =>
@@ -247,7 +257,7 @@ export default function SOWPage() {
       due_date: t.due_date || null,
       points: t.points,
       client_id: selectedClient,
-      assigned_to: null,
+      assigned_to: t.assigned_to,
       reporting_to: adminEmpId,
       created_by: adminEmpId,
       revision_count: 0,
@@ -515,9 +525,11 @@ export default function SOWPage() {
               <TaskCard
                 key={task._id}
                 task={task}
+                employees={employees}
                 onEdit={() => startEdit(task)}
                 onConfirm={() => confirmTask(task._id)}
                 onRemove={() => removeTask(task._id)}
+                onAssign={assignTask}
               />
             )
           )}
@@ -579,14 +591,18 @@ export default function SOWPage() {
 
 function TaskCard({
   task,
+  employees,
   onEdit,
   onConfirm,
   onRemove,
+  onAssign,
 }: {
   task: GeneratedTask;
+  employees: Employee[];
   onEdit: () => void;
   onConfirm: () => void;
   onRemove: () => void;
+  onAssign: (id: string, empId: string | null) => void;
 }) {
   return (
     <div
@@ -633,6 +649,23 @@ function TaskCard({
           <span className="text-[10px] px-2 py-0.5 rounded-full bg-violet-500/10 border border-violet-500/20 text-violet-400">
             {task.mandate_type}
           </span>
+        </div>
+
+        {/* Assign To */}
+        <div className="space-y-1">
+          <label className="text-[10px] text-zinc-500 font-medium">Assign To</label>
+          <select
+            value={task.assigned_to ?? ""}
+            onChange={(e) => onAssign(task._id, e.target.value || null)}
+            className="w-full bg-zinc-800 border border-zinc-700 text-white rounded-lg px-2.5 py-1.5 text-xs focus:outline-none focus:border-zinc-500 min-h-[32px]"
+          >
+            <option value="">Unassigned</option>
+            {employees.map((e) => (
+              <option key={e.id} value={e.id}>
+                {e.full_name} ({e.role})
+              </option>
+            ))}
+          </select>
         </div>
 
         {/* Action buttons */}

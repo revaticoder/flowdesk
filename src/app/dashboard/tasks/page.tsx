@@ -697,9 +697,15 @@ function PlacardCard({
             <div className="w-6 h-6 rounded-full bg-zinc-700 flex items-center justify-center text-[9px] font-bold text-zinc-300 shrink-0 ring-1 ring-zinc-600">
               {task.assignee ? initials(task.assignee.full_name) : "?"}
             </div>
-            <span className="text-zinc-300 truncate max-w-[90px]">
-              {task.assignee?.full_name ?? "Unassigned"}
-            </span>
+            {task.assigned_to ? (
+              <span className="text-zinc-300 truncate max-w-[90px]">
+                {task.assignee?.full_name}
+              </span>
+            ) : (
+              <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-orange-500/15 border border-orange-500/30 text-orange-400">
+                Unassigned
+              </span>
+            )}
           </div>
           {task.reporter && (
             <div className="flex items-center gap-1 min-w-0">
