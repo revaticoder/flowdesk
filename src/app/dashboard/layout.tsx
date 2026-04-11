@@ -13,7 +13,9 @@ const allNavItems = [
   { label: "Tasks", href: "/dashboard/tasks", icon: "◻", adminOnly: false },
   { label: "SOW Breakdown", href: "/dashboard/sow", icon: "✦", adminOnly: true },
   { label: "Attendance", href: "/dashboard/attendance", icon: "◷", adminOnly: false },
+  { label: "Admin Panel", href: "/dashboard/attendance/admin-panel", icon: "◈", adminOnly: true },
   { label: "KPIs", href: "#", icon: "◎", soon: true, adminOnly: false },
+  { label: "Settings", href: "/dashboard/settings/office", icon: "⚙", adminOnly: true },
 ];
 
 type NavItem = (typeof allNavItems)[number] & { overdueCnt?: number };

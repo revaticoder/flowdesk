@@ -121,21 +121,29 @@ export default function AdminLeaveApprovalPage() {
   return (
     <div className="text-white">
       {/* Top bar */}
-      <header className="border-b border-zinc-800 px-8 py-4 flex items-center gap-4">
-        <Link
-          href="/dashboard/attendance"
-          className="text-zinc-400 hover:text-white text-sm transition-colors"
-        >
-          ← Back
-        </Link>
-        <div>
-          <p className="text-xs text-zinc-500 uppercase tracking-widest font-medium">
-            Attendance · Admin
-          </p>
-          <h1 className="text-lg font-bold text-white mt-0.5">
-            Pending Leave Requests
-          </h1>
+      <header className="border-b border-zinc-800 px-4 py-3 md:px-8 md:py-4 flex items-center justify-between gap-4">
+        <div className="flex items-center gap-4">
+          <Link
+            href="/dashboard/attendance"
+            className="text-zinc-400 hover:text-white text-sm transition-colors shrink-0"
+          >
+            ← Back
+          </Link>
+          <div>
+            <p className="text-xs text-zinc-500 uppercase tracking-widest font-medium">
+              Attendance · Admin
+            </p>
+            <h1 className="text-base md:text-lg font-bold text-white mt-0.5">
+              Pending Leave Requests
+            </h1>
+          </div>
         </div>
+        <Link
+          href="/dashboard/attendance/admin/records"
+          className="text-sm text-zinc-400 hover:text-white transition-colors shrink-0"
+        >
+          Attendance Records →
+        </Link>
       </header>
 
       <div className="px-8 py-8 max-w-3xl">

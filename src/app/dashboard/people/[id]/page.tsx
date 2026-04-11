@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 
 const ROLES = [
@@ -65,10 +64,25 @@ export default function EmployeeProfilePage() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [isCurrentUserAdmin, setIsCurrentUserAdmin] = useState(false);
 
   useEffect(() => {
     const fetchData = async () => {
       const supabase = createClient();
+
+      // Fetch current user's role so the back button knows where to fall back
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (user?.email) {
+        const { data: self } = await supabase
+          .from("employees")
+          .select("role")
+          .eq("email", user.email)
+          .maybeSingle();
+        setIsCurrentUserAdmin(self?.role === "Admin");
+      }
+
       const [empRes, mgrRes] = await Promise.all([
         supabase.from("employees").select("*").eq("id", id).single(),
         supabase
@@ -87,6 +101,17 @@ export default function EmployeeProfilePage() {
     };
     fetchData();
   }, [id]);
+
+  // Use browser history when available; fall back to role-appropriate URL
+  // when the page was opened directly (no prior history entry in this session).
+  const handleBack = () => {
+    const fallback = isCurrentUserAdmin ? "/dashboard/people" : "/dashboard";
+    if (typeof window !== "undefined" && window.history.length > 1) {
+      router.back();
+    } else {
+      router.push(fallback);
+    }
+  };
 
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
@@ -139,12 +164,12 @@ export default function EmployeeProfilePage() {
     return (
       <div className="p-8">
         <p className="text-zinc-400 text-sm">Employee not found.</p>
-        <Link
-          href="/dashboard/people"
+        <button
+          onClick={handleBack}
           className="text-zinc-500 hover:text-white text-sm mt-2 inline-block"
         >
-          ← Back to directory
-        </Link>
+          ← Back
+        </button>
       </div>
     );
   }
@@ -159,15 +184,15 @@ export default function EmployeeProfilePage() {
   return (
     <div className="text-white">
       {/* Top bar */}
-      <header className="border-b border-zinc-800 px-8 py-4 flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <Link
-            href="/dashboard/people"
-            className="text-zinc-400 hover:text-white text-sm transition-colors"
+      <header className="border-b border-zinc-800 px-4 py-3 md:px-8 md:py-4 flex items-center justify-between gap-3">
+        <div className="flex items-center gap-3 md:gap-4 min-w-0">
+          <button
+            onClick={handleBack}
+            className="text-zinc-400 hover:text-white text-sm transition-colors shrink-0"
           >
             ← Back
-          </Link>
-          <div>
+          </button>
+          <div className="min-w-0">
             <p className="text-xs text-zinc-500 uppercase tracking-widest font-medium">
               People
             </p>
@@ -189,7 +214,7 @@ export default function EmployeeProfilePage() {
         )}
       </header>
 
-      <div className="px-8 py-8 max-w-2xl">
+      <div className="px-4 py-6 md:px-8 md:py-8 max-w-2xl">
         {/* Profile header */}
         <div className="flex items-center gap-4 mb-8">
           <div className="w-16 h-16 rounded-full bg-zinc-700 flex items-center justify-center text-white font-bold text-lg">

@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 
-type Employee = { id: string; full_name: string; email: string };
+type Employee = { id: string; full_name: string; email: string; role: string };
 
 type AttendanceRecord = {
   id: string;
@@ -14,13 +14,23 @@ type AttendanceRecord = {
   is_late: boolean;
 };
 
-const LATE_HOUR = 10; // 10:00 AM
+type OfficeSettings = {
+  office_start_time: string;
+  grace_period_minutes: number;
+};
+
+type ForgotRecord = {
+  id: string;
+  date: string;
+  check_in: string;
+};
 
 function fmt(ts: string) {
   return new Date(ts).toLocaleTimeString("en-IN", {
     hour: "2-digit",
     minute: "2-digit",
     hour12: true,
+    timeZone: "Asia/Kolkata",
   });
 }
 
@@ -33,30 +43,41 @@ function hoursWorked(checkIn: string, checkOut: string | null) {
   return `${h}h ${m}m`;
 }
 
-function todayISO() {
-  return new Date().toISOString().split("T")[0];
+function nowIST() {
+  return new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Kolkata" }));
+}
+
+function todayIST() {
+  const d = nowIST();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
 export default function AttendancePage() {
   const [employee, setEmployee] = useState<Employee | null>(null);
   const [todayRecord, setTodayRecord] = useState<AttendanceRecord | null>(null);
   const [history, setHistory] = useState<AttendanceRecord[]>([]);
+  const [officeSettings, setOfficeSettings] = useState<OfficeSettings | null>(null);
+  const [forgotCheckout, setForgotCheckout] = useState<ForgotRecord | null>(null);
   const [loading, setLoading] = useState(true);
   const [acting, setActing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const today = todayISO();
-  const now = new Date();
-  const dateLabel = now.toLocaleDateString("en-IN", {
+  const istNow = nowIST();
+  const today = todayIST();
+
+  const dateLabel = new Date().toLocaleDateString("en-IN", {
     weekday: "long",
     day: "numeric",
     month: "long",
     year: "numeric",
+    timeZone: "Asia/Kolkata",
   });
 
-  const monthStart = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-01`;
-  const nextMonth = new Date(now.getFullYear(), now.getMonth() + 1, 1);
-  const monthEnd = new Date(nextMonth.getTime() - 1).toISOString().split("T")[0];
+  const year = istNow.getFullYear();
+  const month = istNow.getMonth();
+  const monthStart = `${year}-${String(month + 1).padStart(2, "0")}-01`;
+  const lastDayOfMonth = new Date(year, month + 1, 0).getDate();
+  const monthEnd = `${year}-${String(month + 1).padStart(2, "0")}-${String(lastDayOfMonth).padStart(2, "0")}`;
 
   useEffect(() => {
     const init = async () => {
@@ -68,7 +89,7 @@ export default function AttendancePage() {
 
       const { data: emp } = await supabase
         .from("employees")
-        .select("id, full_name, email")
+        .select("id, full_name, email, role")
         .eq("email", user.email)
         .single();
 
@@ -78,15 +99,37 @@ export default function AttendancePage() {
       }
       setEmployee(emp);
 
+      // Fetch office settings for late calculation
+      const { data: settings } = await supabase
+        .from("office_settings")
+        .select("office_start_time, grace_period_minutes")
+        .single();
+      setOfficeSettings(settings ?? null);
+
+      // Today's record
       const { data: todayData } = await supabase
         .from("attendance")
         .select("*")
         .eq("employee_id", emp.id)
         .eq("date", today)
         .maybeSingle();
-
       setTodayRecord(todayData ?? null);
 
+      // Check for forgotten checkout on a previous day (skip for Admins)
+      if (emp.role !== "Admin") {
+        const { data: forgotData } = await supabase
+          .from("attendance")
+          .select("id, date, check_in")
+          .eq("employee_id", emp.id)
+          .lt("date", today)
+          .is("check_out", null)
+          .order("date", { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        setForgotCheckout(forgotData ?? null);
+      }
+
+      // Month history
       const { data: hist } = await supabase
         .from("attendance")
         .select("*")
@@ -94,8 +137,8 @@ export default function AttendancePage() {
         .gte("date", monthStart)
         .lte("date", monthEnd)
         .order("date", { ascending: false });
-
       setHistory(hist ?? []);
+
       setLoading(false);
     };
 
@@ -108,7 +151,15 @@ export default function AttendancePage() {
     setError(null);
     const supabase = createClient();
     const checkInTime = new Date().toISOString();
-    const isLate = new Date().getHours() >= LATE_HOUR;
+
+    // Determine late using IST time + office settings grace period
+    const ist = nowIST();
+    const currentMins = ist.getHours() * 60 + ist.getMinutes();
+    const [sh, sm] = (officeSettings?.office_start_time ?? "10:00:00")
+      .split(":")
+      .map(Number);
+    const grace = officeSettings?.grace_period_minutes ?? 15;
+    const isLate = currentMins > sh * 60 + sm + grace;
 
     const { data, error: err } = await supabase
       .from("attendance")
@@ -193,6 +244,26 @@ export default function AttendancePage() {
           </div>
         ) : (
           <>
+            {/* Forgot checkout banner */}
+            {forgotCheckout && (
+              <div className="bg-amber-500/10 border border-amber-500/30 rounded-xl px-4 py-3 flex items-start gap-3">
+                <span className="text-amber-400 mt-0.5 shrink-0">⚠</span>
+                <p className="text-amber-300 text-sm">
+                  You forgot to check out on{" "}
+                  <span className="font-semibold">
+                    {new Date(
+                      forgotCheckout.date + "T00:00:00"
+                    ).toLocaleDateString("en-IN", {
+                      weekday: "long",
+                      day: "numeric",
+                      month: "long",
+                    })}
+                  </span>
+                  . Please contact Admin.
+                </p>
+              </div>
+            )}
+
             {/* Check-in card */}
             <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-5 md:p-6">
               <p className="text-zinc-400 text-sm mb-3">
@@ -271,9 +342,10 @@ export default function AttendancePage() {
             {/* Month history */}
             <div>
               <h2 className="text-sm font-semibold text-zinc-300 mb-3 uppercase tracking-widest">
-                {now.toLocaleDateString("en-IN", {
+                {new Date().toLocaleDateString("en-IN", {
                   month: "long",
                   year: "numeric",
+                  timeZone: "Asia/Kolkata",
                 })}
               </h2>
 
@@ -306,11 +378,14 @@ export default function AttendancePage() {
                         {history.map((rec) => (
                           <tr key={rec.id} className="bg-zinc-900/40">
                             <td className="px-4 py-3 text-zinc-300 whitespace-nowrap">
-                              {new Date(rec.date).toLocaleDateString("en-IN", {
-                                weekday: "short",
-                                day: "numeric",
-                                month: "short",
-                              })}
+                              {new Date(rec.date + "T00:00:00").toLocaleDateString(
+                                "en-IN",
+                                {
+                                  weekday: "short",
+                                  day: "numeric",
+                                  month: "short",
+                                }
+                              )}
                             </td>
                             <td className="px-4 py-3 text-white whitespace-nowrap">
                               {fmt(rec.check_in)}
