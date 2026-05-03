@@ -13,6 +13,7 @@ import {
 
 type Client = { id: string; company_name: string };
 type Mandate = { id: string; mandate_type: string; client_id: string };
+type SubMandate = { id: string; name: string; mandate_id: string };
 type Employee = { id: string; full_name: string };
 
 // Task templates keyed by mandate_type (partial match)
@@ -152,6 +153,7 @@ function NewTaskForm() {
 
   const [clients, setClients] = useState<Client[]>([]);
   const [allMandates, setAllMandates] = useState<Mandate[]>([]);
+  const [subMandates, setSubMandates] = useState<SubMandate[]>([]);
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [adminEmpId, setAdminEmpId] = useState<string | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
@@ -166,6 +168,7 @@ function NewTaskForm() {
     description: "",
     client_id: prefilledClientId,
     mandate_id: prefilledMandateId,
+    sub_mandate_id: "",
     assigned_to: "",
     reporting_to: "",
     task_type: "",
@@ -227,6 +230,20 @@ function NewTaskForm() {
     load();
   }, [router]);
 
+  useEffect(() => {
+    if (!form.mandate_id) {
+      setSubMandates([]);
+      return;
+    }
+    const supabase = createClient();
+    supabase
+      .from("sub_mandates")
+      .select("id, name, mandate_id")
+      .eq("mandate_id", form.mandate_id)
+      .order("name")
+      .then(({ data }) => setSubMandates(data ?? []));
+  }, [form.mandate_id]);
+
   const handlePriorityChange = (priority: string) => {
     setForm((f) => ({
       ...f,
@@ -270,6 +287,7 @@ function NewTaskForm() {
         description: form.description.trim() || null,
         client_id: form.client_id || null,
         mandate_id: form.mandate_id || null,
+        sub_mandate_id: form.sub_mandate_id || null,
         assigned_to: form.assigned_to,
         reporting_to: form.reporting_to || null,
         task_type: form.task_type,
@@ -462,7 +480,7 @@ function NewTaskForm() {
                 <select
                   value={form.mandate_id}
                   onChange={(e) => {
-                    setForm((f) => ({ ...f, mandate_id: e.target.value }));
+                    setForm((f) => ({ ...f, mandate_id: e.target.value, sub_mandate_id: "" }));
                     setShowTemplates(false);
                   }}
                   className={selectClass}
@@ -477,6 +495,27 @@ function NewTaskForm() {
                 </select>
               </Field>
             </div>
+
+            {/* Sub-Mandate */}
+            {form.mandate_id && (
+              <Field label="Sub-Mandate">
+                <select
+                  value={form.sub_mandate_id}
+                  onChange={(e) => setForm((f) => ({ ...f, sub_mandate_id: e.target.value }))}
+                  className={selectClass}
+                  disabled={subMandates.length === 0}
+                >
+                  <option value="">
+                    {subMandates.length === 0 ? "No sub-mandates for this mandate" : "Select sub-mandate…"}
+                  </option>
+                  {subMandates.map((sm) => (
+                    <option key={sm.id} value={sm.id}>
+                      {sm.name}
+                    </option>
+                  ))}
+                </select>
+              </Field>
+            )}
 
             {/* Template hint */}
             {selectedMandate && templates.length > 0 && (

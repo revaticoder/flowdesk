@@ -26,6 +26,7 @@ For each task return a JSON object with these exact fields:
 - due_date: a date string within ${month} (earlier dates for urgent tasks)
 - points: number (Urgent=20, High=15, Medium=10, Low=5)
 - mandate_type: one of [Social Media Marketing, Performance Marketing, SEO, Content Marketing, Website Development, Branding, Email Marketing, WhatsApp Marketing, Influencer Marketing, PR Management]
+- sub_mandate_name: a short descriptive name for the sub-deliverable this task belongs to (e.g. "12 Instagram Reels/month", "Weekly Performance Reports", "Blog Content - 4 posts/month"). Group related tasks under the same sub_mandate_name.
 
 Return ONLY a valid JSON array. No explanation, no markdown, no backticks. Just the raw JSON array.
 

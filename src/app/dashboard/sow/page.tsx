@@ -19,6 +19,7 @@ type GeneratedTask = {
   due_date: string;
   points: number;
   mandate_type: string;
+  sub_mandate_name: string;
   confirmed: boolean;
   assigned_to: string | null;
 };
@@ -30,6 +31,7 @@ type EditState = {
   due_date: string;
   points: string;
   mandate_type: string;
+  sub_mandate_name: string;
 };
 
 // ── Constants ────────────────────────────────────────────────────────────────
@@ -176,6 +178,7 @@ export default function SOWPage() {
         _id: `gtask-${Date.now()}-${i}`,
         confirmed: false,
         assigned_to: null,
+        sub_mandate_name: t.sub_mandate_name ?? "",
         points:
           Number(t.points) ||
           PRIORITY_POINTS[t.priority as keyof typeof PRIORITY_POINTS] ||
@@ -211,6 +214,7 @@ export default function SOWPage() {
       due_date: task.due_date,
       points: String(task.points),
       mandate_type: task.mandate_type,
+      sub_mandate_name: task.sub_mandate_name,
     });
   };
 
@@ -232,6 +236,7 @@ export default function SOWPage() {
                 ] ||
                 10,
               mandate_type: editForm.mandate_type,
+              sub_mandate_name: editForm.sub_mandate_name,
             }
           : t
       )
@@ -249,19 +254,73 @@ export default function SOWPage() {
     setGenError(null);
 
     const supabase = createClient();
-    const inserts = tasks.map((t) => ({
-      title: t.title,
-      task_type: t.role,
-      priority: t.priority,
-      status: "Not Started",
-      due_date: t.due_date || null,
-      points: t.points,
-      client_id: selectedClient,
-      assigned_to: t.assigned_to,
-      reporting_to: adminEmpId,
-      created_by: adminEmpId,
-      revision_count: 0,
-    }));
+
+    // Get all active mandates for this client to resolve mandate_id
+    const { data: clientMandates } = await supabase
+      .from("mandates")
+      .select("id, mandate_type")
+      .eq("client_id", selectedClient)
+      .eq("status", "Active");
+
+    const mandateMap: Record<string, string> = {};
+    for (const m of clientMandates ?? []) {
+      mandateMap[m.mandate_type.toLowerCase()] = m.id;
+    }
+
+    // Resolve or create sub_mandates, keyed by "mandate_id|sub_mandate_name"
+    const subMandateCache: Record<string, string> = {};
+
+    for (const t of tasks) {
+      if (!t.sub_mandate_name) continue;
+      const mandateId = Object.entries(mandateMap).find(([key]) =>
+        t.mandate_type.toLowerCase().includes(key) || key.includes(t.mandate_type.toLowerCase())
+      )?.[1] ?? null;
+      if (!mandateId) continue;
+
+      const cacheKey = `${mandateId}|${t.sub_mandate_name}`;
+      if (subMandateCache[cacheKey]) continue;
+
+      // Check if it already exists
+      const { data: existing } = await supabase
+        .from("sub_mandates")
+        .select("id")
+        .eq("mandate_id", mandateId)
+        .eq("name", t.sub_mandate_name)
+        .maybeSingle();
+
+      if (existing) {
+        subMandateCache[cacheKey] = existing.id;
+      } else {
+        const { data: created } = await supabase
+          .from("sub_mandates")
+          .insert({ mandate_id: mandateId, name: t.sub_mandate_name, deliverable_count: 1 })
+          .select("id")
+          .single();
+        if (created) subMandateCache[cacheKey] = created.id;
+      }
+    }
+
+    const inserts = tasks.map((t) => {
+      const mandateId = Object.entries(mandateMap).find(([key]) =>
+        t.mandate_type.toLowerCase().includes(key) || key.includes(t.mandate_type.toLowerCase())
+      )?.[1] ?? null;
+      const cacheKey = mandateId && t.sub_mandate_name ? `${mandateId}|${t.sub_mandate_name}` : null;
+      return {
+        title: t.title,
+        task_type: t.role,
+        priority: t.priority,
+        status: "Not Started",
+        due_date: t.due_date || null,
+        points: t.points,
+        client_id: selectedClient,
+        mandate_id: mandateId,
+        sub_mandate_id: cacheKey ? (subMandateCache[cacheKey] ?? null) : null,
+        assigned_to: t.assigned_to,
+        reporting_to: adminEmpId,
+        created_by: adminEmpId,
+        revision_count: 0,
+      };
+    });
 
     const { error: err } = await supabase.from("tasks").insert(inserts);
 
@@ -649,6 +708,11 @@ function TaskCard({
           <span className="text-[10px] px-2 py-0.5 rounded-full bg-violet-500/10 border border-violet-500/20 text-violet-400">
             {task.mandate_type}
           </span>
+          {task.sub_mandate_name && (
+            <span className="text-[10px] px-2 py-0.5 rounded-full bg-blue-500/10 border border-blue-500/20 text-blue-400">
+              {task.sub_mandate_name}
+            </span>
+          )}
         </div>
 
         {/* Assign To */}
@@ -796,6 +860,13 @@ function EditCard({
           </option>
         ))}
       </select>
+
+      <input
+        value={editForm.sub_mandate_name}
+        onChange={(e) => setEditForm({ ...editForm, sub_mandate_name: e.target.value })}
+        placeholder="Sub-mandate name (e.g. 12 Instagram Reels/month)"
+        className={cls}
+      />
 
       <div className="flex gap-2">
         <button

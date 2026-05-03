@@ -5,6 +5,31 @@ import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 
+const FORMAT_TYPES = [
+  "Static Post",
+  "Reel",
+  "Carousel",
+  "Story",
+  "LinkedIn Post",
+  "GMB Post",
+  "Blog",
+  "Video",
+  "Other",
+];
+
+const SUB_MANDATE_ROLES = [
+  "Copywriter",
+  "Graphic Designer",
+  "Senior Graphic Designer",
+  "Video Editor",
+  "Junior Video Editor",
+  "Social Media Manager",
+  "SEO Specialist",
+  "Performance Marketer",
+  "Strategist",
+  "Digital Marketer",
+];
+
 const MANDATE_TYPES = [
   "Strategy & Consulting",
   "Branding & Identity",
@@ -59,6 +84,18 @@ type Mandate = {
 };
 
 type Employee = { id: string; full_name: string };
+
+type SubMandate = {
+  id: string;
+  mandate_id: string;
+  name: string;
+  deliverable_count: number;
+  format_type: string;
+  assigned_roles: string[];
+  fulfillment_count: number;
+  status: string;
+  created_at: string;
+};
 
 type MandateTask = {
   id: string;
@@ -132,6 +169,17 @@ export default function MandateDetailPage() {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
+  // Sub-mandate state
+  const [subMandates, setSubMandates] = useState<SubMandate[]>([]);
+  const [showAddSub, setShowAddSub] = useState(false);
+  const [savingSub, setSavingSub] = useState(false);
+  const [subForm, setSubForm] = useState({
+    name: "",
+    deliverable_count: "1",
+    format_type: "Other",
+    assigned_roles: [] as string[],
+  });
+
   // Edit form state
   const [editForm, setEditForm] = useState({
     mandate_type: "",
@@ -159,7 +207,7 @@ export default function MandateDetailPage() {
         if (emp?.role === "Admin") setIsAdmin(true);
       }
 
-      const [mandateRes, empRes, tasksRes] = await Promise.all([
+      const [mandateRes, empRes, tasksRes, subRes] = await Promise.all([
         supabase
           .from("mandates")
           .select("*, clients(company_name)")
@@ -171,6 +219,11 @@ export default function MandateDetailPage() {
           .select("id, title, priority, status, due_date, assignee:assigned_to(full_name)")
           .eq("mandate_id", id)
           .order("due_date", { ascending: true, nullsFirst: false }),
+        supabase
+          .from("sub_mandates")
+          .select("*")
+          .eq("mandate_id", id)
+          .order("created_at", { ascending: true }),
       ]);
 
       if (mandateRes.data) {
@@ -195,6 +248,7 @@ export default function MandateDetailPage() {
       }
       setEmployees(empRes.data ?? []);
       setMandateTasks((tasksRes.data as unknown as MandateTask[]) ?? []);
+      setSubMandates((subRes.data as SubMandate[]) ?? []);
       setLoading(false);
     };
     load();
@@ -272,11 +326,47 @@ export default function MandateDetailPage() {
   const handleDelete = async () => {
     setDeleting(true);
     const supabase = createClient();
-    // Delete linked tasks first
     await supabase.from("tasks").delete().eq("mandate_id", id);
-    // Delete mandate
     await supabase.from("mandates").delete().eq("id", id);
     router.push("/dashboard/mandates");
+  };
+
+  const handleAddSubMandate = async () => {
+    if (!subForm.name.trim()) return;
+    setSavingSub(true);
+    const supabase = createClient();
+    const { data, error: err } = await supabase
+      .from("sub_mandates")
+      .insert({
+        mandate_id: id,
+        name: subForm.name.trim(),
+        deliverable_count: parseInt(subForm.deliverable_count) || 1,
+        format_type: subForm.format_type,
+        assigned_roles: subForm.assigned_roles,
+      })
+      .select()
+      .single();
+    if (!err && data) {
+      setSubMandates((prev) => [...prev, data as SubMandate]);
+      setSubForm({ name: "", deliverable_count: "1", format_type: "Other", assigned_roles: [] });
+      setShowAddSub(false);
+    }
+    setSavingSub(false);
+  };
+
+  const toggleSubRole = (role: string) => {
+    setSubForm((f) => ({
+      ...f,
+      assigned_roles: f.assigned_roles.includes(role)
+        ? f.assigned_roles.filter((r) => r !== role)
+        : [...f.assigned_roles, role],
+    }));
+  };
+
+  const handleDeleteSubMandate = async (subId: string) => {
+    const supabase = createClient();
+    await supabase.from("sub_mandates").delete().eq("id", subId);
+    setSubMandates((prev) => prev.filter((s) => s.id !== subId));
   };
 
   if (loading) return <div className="p-8 text-zinc-500 text-sm">Loading…</div>;
@@ -477,6 +567,153 @@ export default function MandateDetailPage() {
                 </span>
               ))}
             </div>
+          </div>
+        )}
+
+        {/* Sub-Mandates Section */}
+        {!editing && (
+          <div className="bg-zinc-900 border border-zinc-800 rounded-xl overflow-hidden">
+            <div className="flex items-center justify-between px-5 py-3 border-b border-zinc-800">
+              <p className="text-xs text-zinc-500 uppercase tracking-widest font-medium">
+                Sub-Mandates
+              </p>
+              {isAdmin && (
+                <button
+                  onClick={() => setShowAddSub((v) => !v)}
+                  className="text-xs text-zinc-400 hover:text-white border border-zinc-700 hover:border-zinc-500 px-3 py-1.5 rounded-lg transition-colors"
+                >
+                  {showAddSub ? "Cancel" : "+ Add Sub-Mandate"}
+                </button>
+              )}
+            </div>
+
+            {/* Add form */}
+            {showAddSub && (
+              <div className="px-5 py-4 border-b border-zinc-800 space-y-3 bg-zinc-800/30">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <label className="text-xs text-zinc-400">Name *</label>
+                    <input
+                      value={subForm.name}
+                      onChange={(e) => setSubForm((f) => ({ ...f, name: e.target.value }))}
+                      placeholder="e.g. 12 Instagram Posts/month"
+                      className="w-full bg-zinc-800 border border-zinc-700 text-white placeholder-zinc-500 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-zinc-600 min-h-[40px]"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-xs text-zinc-400">Deliverable Count</label>
+                    <input
+                      type="number"
+                      value={subForm.deliverable_count}
+                      onChange={(e) => setSubForm((f) => ({ ...f, deliverable_count: e.target.value }))}
+                      min="1"
+                      className="w-full bg-zinc-800 border border-zinc-700 text-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-zinc-600 min-h-[40px]"
+                    />
+                  </div>
+                </div>
+                <div className="space-y-1">
+                  <label className="text-xs text-zinc-400">Format Type</label>
+                  <select
+                    value={subForm.format_type}
+                    onChange={(e) => setSubForm((f) => ({ ...f, format_type: e.target.value }))}
+                    className="w-full bg-zinc-800 border border-zinc-700 text-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-zinc-600 min-h-[40px]"
+                  >
+                    {FORMAT_TYPES.map((ft) => (
+                      <option key={ft} value={ft}>{ft}</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-xs text-zinc-400">Assigned Roles</label>
+                  <div className="flex flex-wrap gap-2">
+                    {SUB_MANDATE_ROLES.map((role) => {
+                      const sel = subForm.assigned_roles.includes(role);
+                      return (
+                        <button
+                          key={role}
+                          type="button"
+                          onClick={() => toggleSubRole(role)}
+                          className={`text-xs px-3 py-1.5 rounded-lg border transition-colors min-h-[32px] ${
+                            sel
+                              ? "bg-white text-black border-white font-medium"
+                              : "bg-zinc-800 text-zinc-400 border-zinc-700 hover:border-zinc-500 hover:text-white"
+                          }`}
+                        >
+                          {role}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+                <button
+                  onClick={handleAddSubMandate}
+                  disabled={savingSub || !subForm.name.trim()}
+                  className="bg-white text-black font-semibold text-xs px-4 py-2 rounded-lg hover:bg-zinc-200 transition-colors disabled:opacity-50 min-h-[36px]"
+                >
+                  {savingSub ? "Saving…" : "Add Sub-Mandate"}
+                </button>
+              </div>
+            )}
+
+            {subMandates.length === 0 && !showAddSub ? (
+              <div className="px-5 py-6 text-center">
+                <p className="text-zinc-600 text-sm">No sub-mandates yet.</p>
+              </div>
+            ) : (
+              <div className="divide-y divide-zinc-800/60">
+                {subMandates.map((sm) => {
+                  const pct = sm.deliverable_count > 0
+                    ? Math.min(100, Math.round((sm.fulfillment_count / sm.deliverable_count) * 100))
+                    : 0;
+                  const barColor = pct >= 80 ? "bg-emerald-400" : pct >= 40 ? "bg-blue-400" : "bg-amber-400";
+                  return (
+                    <div key={sm.id} className="px-5 py-4 space-y-2">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <p className="text-sm font-medium text-white truncate">{sm.name}</p>
+                          <span className="text-[10px] px-2 py-0.5 rounded-full bg-zinc-800 border border-zinc-700 text-zinc-400 inline-block mt-1">
+                            {sm.format_type}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-2 shrink-0">
+                          <span className="text-xs text-zinc-500 whitespace-nowrap">
+                            {sm.fulfillment_count}/{sm.deliverable_count}
+                          </span>
+                          {isAdmin && (
+                            <button
+                              onClick={() => handleDeleteSubMandate(sm.id)}
+                              className="text-zinc-700 hover:text-red-400 text-sm transition-colors"
+                              title="Delete"
+                            >
+                              ×
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                      {/* Fulfillment bar */}
+                      <div className="w-full bg-zinc-800 rounded-full h-1.5">
+                        <div
+                          className={`${barColor} h-1.5 rounded-full transition-all`}
+                          style={{ width: `${pct}%` }}
+                        />
+                      </div>
+                      {sm.assigned_roles.length > 0 && (
+                        <div className="flex flex-wrap gap-1.5 pt-0.5">
+                          {sm.assigned_roles.map((r) => (
+                            <span
+                              key={r}
+                              className="text-[10px] px-2 py-0.5 rounded-full bg-violet-500/10 border border-violet-500/20 text-violet-400"
+                            >
+                              {r}
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
         )}
 
