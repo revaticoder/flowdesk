@@ -1,0 +1,36 @@
+Fix the Admin Attendance page at /dashboard/attendance/admin with these improvements:
+
+1. JOINING-DATE BASED PAYMENT CYCLE
+- Each employee has a joining_date in the employees table
+- Their "attendance cycle" runs from their joining day each month to the same day next month
+- Example: If joining_date is January 12, their cycle is 12th of one month to 11th of the next month
+- The attendance report must calculate stats within THIS cycle, not a calendar month
+- Show the current active cycle dates at the top like: "Cycle: 12 Apr → 11 May"
+- Add a cycle navigator so admin can go back to previous cycles (Previous / Next buttons)
+
+2. SUMMARY STATS PER EMPLOYEE - show these columns in a table:
+- Employee Name
+- Cycle Start → Cycle End
+- Total Working Days in cycle (exclude Sundays from the count)
+- Days Present (days with a check_in record)
+- Days Absent (Total Working Days minus Days Present minus approved leave days)
+- Total Working Hours (sum of all check_out minus check_in durations in the cycle, shown as HH:MM)
+- Overtime Hours (any daily hours beyond 8 hours — sum all excess, shown as HH:MM)
+
+3. ABSENT DATES LIST
+- Below or next to each employee row, show a collapsible section or tooltip that lists the exact dates they were absent
+- Format: "11 Apr, 12 Apr, 15 Apr" etc.
+- Sundays should NOT appear in this list
+- Approved leave days should be marked separately as "On Leave" not "Absent"
+
+4. CSV EXPORT BUTTON
+- Add an "Export CSV" button at the top of the admin attendance page
+- When clicked it downloads a CSV file with ALL employees' attendance data for the selected cycle
+- CSV columns: Employee Name, Role, Cycle Start, Cycle End, Working Days, Present Days, Absent Days, Leave Days, Total Hours Worked, Overtime Hours, Absent Dates (comma separated in one cell)
+- Filename format: attendance_cycle_STARTDATE_to_ENDDATE.csv
+
+5. Keep the existing check-in/check-out functionality and late flagging untouched. Only add to the admin view.
+
+The employees table has: id, full_name, role, joining_date
+The attendance table has: id, employee_id, date, check_in, check_out, is_late
+The leaves table has: id, employee_id, start_date, end_date, status (use only status = 'approved')
